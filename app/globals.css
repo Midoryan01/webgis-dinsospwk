@@ -1,0 +1,164 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — SIG Dinas Sosial Purwakarta
+   Light mode: biru/navy bersih & profesional
+   Dark mode : navy-blue gelap konsisten dengan brand
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Surface ── */
+  --bg:        #EEF2F7;
+  --surface:   #ffffff;
+  --surface-2: #f7f9fc;
+
+  /* ── Border ── */
+  --border:    #e2e9f0;
+  --border-2:  #edf1f6;
+
+  /* ── Text ── */
+  --text:       #0d1f33;
+  --text-2:     #2c3e52;
+  --text-muted: #5e7289;
+  --text-faint: #95aabf;
+
+  /* ── Primary — biru navy brand ── */
+  --primary:        #1A6EA8;
+  --primary-hover:  #135a8c;
+  --primary-light:  #e8f3fb;
+  --primary-border: #aed6ef;
+  --primary-text:   #1A6EA8;
+  --primary-fg:     #ffffff;
+  --primary-glow:   rgba(26,110,168,0.15);
+
+  /* ── Status ── */
+  --success:        #15803d;
+  --success-light:  #f0fdf4;
+  --success-border: #bbf7d0;
+  --warning:        #d97706;
+  --warning-light:  #fffbeb;
+  --warning-border: #fde68a;
+  --error:          #dc2626;
+  --error-light:    #fef2f2;
+  --error-border:   rgba(220,38,38,0.25);
+
+  /* ── Sidebar (selalu gelap) ── */
+  --sidebar-bg:          #0B2444;
+  --sidebar-bg-end:      #082035;
+  --sidebar-border:      rgba(255,255,255,0.07);
+  --sidebar-nav-text:    rgba(255,255,255,0.48);
+  --sidebar-nav-hover:   rgba(255,255,255,0.06);
+  --sidebar-active-bg:   rgba(59,159,212,0.16);
+  --sidebar-active-text: #60b4e0;
+
+  /* ── Map panel ── */
+  --map-panel-bg:         #ffffff;
+  --map-panel-border:     #e2e9f0;
+  --map-panel-text:       #0d1f33;
+  --map-panel-text-muted: #95aabf;
+  --map-panel-row-even:   #ffffff;
+  --map-panel-row-odd:    #f7f9fc;
+
+  /* ── Shadows ── */
+  --shadow-sm:  0 1px 3px rgba(13,31,51,0.06), 0 1px 2px rgba(13,31,51,0.04);
+  --shadow-md:  0 4px 16px rgba(13,31,51,0.08), 0 1px 4px rgba(13,31,51,0.04);
+  --shadow-lg:  0 8px 32px rgba(13,31,51,0.12), 0 2px 8px rgba(13,31,51,0.06);
+
+  /* ── Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --background: #ffffff;
+  --foreground: #0d1f33;
+}
+
+/* ─── Dark Mode — Navy Blue (sesuai brand) ────────────────────────────────── */
+html[data-theme="dark"] {
+  /* ── Surface ── */
+  --bg:        #0a1520;
+  --surface:   #0f1e2f;
+  --surface-2: #152333;
+
+  /* ── Border ── */
+  --border:    #1d3349;
+  --border-2:  #182c40;
+
+  /* ── Text ── */
+  --text:       #dde8f0;
+  --text-2:     #b0c4d8;
+  --text-muted: #7090aa;
+  --text-faint: #445f78;
+
+  /* ── Primary — biru terang untuk dark ── */
+  --primary:        #3fa8d8;
+  --primary-hover:  #2e94c4;
+  --primary-light:  rgba(63,168,216,0.10);
+  --primary-border: rgba(63,168,216,0.25);
+  --primary-text:   #62badf;
+  --primary-fg:     #ffffff;
+  --primary-glow:   rgba(63,168,216,0.18);
+
+  /* ── Status ── */
+  --success:        #4ade80;
+  --success-light:  rgba(22,163,74,0.10);
+  --success-border: rgba(22,163,74,0.25);
+  --warning-light:  rgba(217,119,6,0.10);
+  --warning-border: rgba(217,119,6,0.25);
+  --error-light:    rgba(220,38,38,0.10);
+  --error-border:   rgba(220,38,38,0.25);
+
+  /* ── Sidebar (lebih gelap dari surface) ── */
+  --sidebar-bg:          #060e19;
+  --sidebar-bg-end:      #050c16;
+  --sidebar-border:      rgba(255,255,255,0.055);
+  --sidebar-nav-text:    rgba(255,255,255,0.42);
+  --sidebar-nav-hover:   rgba(255,255,255,0.05);
+  --sidebar-active-bg:   rgba(63,168,216,0.14);
+  --sidebar-active-text: #62badf;
+
+  /* ── Map panel ── */
+  --map-panel-bg:         #0f1e2f;
+  --map-panel-border:     #1d3349;
+  --map-panel-text:       #dde8f0;
+  --map-panel-text-muted: #7090aa;
+  --map-panel-row-even:   #0f1e2f;
+  --map-panel-row-odd:    #152333;
+
+  /* ── Shadows (gelap lebih dalam) ── */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.15);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.40), 0 1px 4px rgba(0,0,0,0.20);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.25);
+
+  --background: #0a1520;
+  --foreground: #dde8f0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  /* Inter sebagai font utama — lebih profesional & modern */
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; /* Inter stylistic sets */
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.leaflet-container { font-family: inherit; }
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }

@@ -1,0 +1,35 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Kecamatan {
+  id        Int      @id @default(autoincrement())
+  nama      String   @unique // Contoh: "Purwakarta"
+  penduduk  Int      // Total penduduk kecamatan
+  desa      Desa[]   // Relasi ke tabel Desa
+}
+
+model Desa {
+  id          Int        @id @default(autoincrement())
+  nama        String     @unique // Contoh: "Nagri Kidul"
+  penduduk    Int        // Total penduduk desa
+  kecamatanId Int
+  kecamatan   Kecamatan  @relation(fields: [kecamatanId], references: [id])
+  warga       Warga[]    // Relasi ke tabel Warga
+}
+
+model Warga {
+  id        Int      @id @default(autoincrement())
+  nik       String   @unique // Contoh: "321401..."
+  nama      String   // Contoh: "Budi Santoso"
+  alamat    String   // Contoh: "Jl. Mawar No. 10"
+  desaId    Int
+  desa      Desa     @relation(fields: [desaId], references: [id])
+}
