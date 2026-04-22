@@ -1,204 +1,177 @@
-# SIG PKH — Sistem Informasi Geografis Dinas Sosial Kabupaten Purwakarta
+<div align="center">
+  <h1 align="center">🌍 WebGIS Dinas Sosial Purwakarta</h1>
+  <p align="center">
+    <strong>Sistem Informasi Geografis Program Keluarga Harapan (PKH)</strong>
+  </p>
 
-WebGIS untuk memetakan dan mengelola data penerima Program Keluarga Harapan (PKH) Dinas Sosial Kabupaten Purwakarta.
-
----
-
-## Fitur Utama
-
-- **Peta Interaktif** — Visualisasi sebaran PKH per kecamatan dan per desa menggunakan Leaflet
-- **Dua Mode Indikator** — Jumlah penerima (mentah) atau rasio per 1.000 jiwa
-- **Login Admin** — Autentikasi berbasis cookie, dilindungi middleware Next.js
-- **Dashboard Admin** — Statistik ringkasan, tabel data per kecamatan, import/export Excel
-- **Tooltip & FlyTo** — Hover tooltip dan zoom otomatis saat klik wilayah
-
----
-
-## Tech Stack
-
-| Layer | Teknologi |
-|---|---|
-| Framework | Next.js 15 (App Router), TypeScript |
-| Styling | Tailwind CSS v3 |
-| Peta | Leaflet 1.9 (vanilla, dynamic import) |
-| Database ORM | Prisma + MySQL |
-| Auth | Cookie session (httpOnly) + Middleware |
+  <p align="center">
+    <!-- Badges -->
+    <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-15.5-black?style=for-the-badge&logo=next.js" alt="Next.js" /></a>
+    <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript" alt="TypeScript" /></a>
+    <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css" alt="Tailwind CSS" /></a>
+    <a href="https://leafletjs.com/"><img src="https://img.shields.io/badge/Leaflet-1.9-199900?style=for-the-badge&logo=leaflet" alt="Leaflet" /></a>
+    <a href="https://www.prisma.io/"><img src="https://img.shields.io/badge/Prisma-6.0-2D3748?style=for-the-badge&logo=prisma" alt="Prisma" /></a>
+  </p>
+</div>
 
 ---
 
-## Cara Menjalankan Lokal
+## 📖 Tentang Aplikasi
 
-### 1. Clone & install dependensi
+WebGIS PKH adalah platform pemetaan digital interaktif yang dirancang khusus untuk memetakan, memvisualisasikan, dan mengelola sebaran data penerima **Program Keluarga Harapan (PKH)** di wilayah Kabupaten Purwakarta.
+
+Aplikasi ini menggunakan perpaduan teknologi web modern (Next.js 15) dengan arsitektur peta dinamis (Leaflet) untuk menyajikan pengalaman pengguna (UI/UX) yang profesional, cepat, dan responsif.
+
+---
+
+## ✨ Fitur Utama
+
+- 🗺️ **Peta Interaktif (Choropleth)** — Visualisasi data sebaran PKH wilayah operasional (Kecamatan & Desa) terpadu dengan Leaflet.
+- 📊 **Dynamic Indicators** — Dua mode analisis vizualisasi: Indikator Jumlah Penerima (Absolute) atau Rasio Kepadatan per 1.000 jiwa.
+- 🔐 **Secure Admin Portal** — Autentikasi berbasis cookie `httpOnly` dengan proteksi Next.js Middleware dan enkripsi JWT/Bcrypt.
+- 📈 **Dashboard Executive** — Panel statistik ringkasan dan manajemen data tabular dengan fungsionalitas Import/Export Excel.
+- 📍 **Smart Tooltip & FlyTo** — Interaksi UX interaktif, hover tooltip canggih, dan zoom otomatis saat observasi wilayah spesifik.
+- 🌙 **Dark/Light Mode** — Tampilan antarmuka yang menyesuaikan preferensi mata pengguna (Sinkron antara UI Dashboard & Tile Peta).
+
+---
+
+## 🛠️ Tech Stack & Arsitektur
+
+Platform ini dibangun menggunakan arsitektur modern berbasis **React Server Components** (App Router):
+
+| Layer | Teknologi yang Digunakan |
+| :--- | :--- |
+| **Framework Layer** | Next.js 15.5 (App Router), React 19, TypeScript |
+| **Styling & UI** | Tailwind CSS v3, CSS Modules |
+| **Map Engine** | Leaflet 1.9, React-Leaflet 5.0 |
+| **Database & ORM** | MySQL, Prisma ORM 6.0 |
+| **Security & Auth** | Jose (Decryption/Encryption), Bcrypt.js, Edge Middleware |
+
+---
+
+## 🚀 Panduan Eksekusi Lokal
+
+Berikut langkah-langkah untuk menjalankan aplikasi WebGIS ini pada mesin lokal Anda.
+
+### 1. Prasyarat
+Pastikan environment mesin Anda telah terinstall:
+- **Node.js**: `v18.17.0` atau yang lebih baru.
+- **NPM** atau **Yarn**.
+- **MySQL Server** (jika ingin mencoba koneksi database langsung).
+
+### 2. Instalasi & Setup
 
 ```bash
-git clone <repo-url>
-cd webgis
+# Clone repositori
+git clone <url-repo-anda>
+cd webgis-dinsospwk
+
+# Install semua dependencies
 npm install
 ```
 
-### 2. Konfigurasi environment
+### 3. Konfigurasi Environment
 
+Duplikat template environment yang telah disediakan menjadi variabel lokal:
 ```bash
 cp .env.example .env.local
 ```
-
-Isi file `.env.local`:
-
+Sesuaikan _connection string_ database Anda pada `DATABASE_URL` di dalam file `.env.local`:
 ```env
 DATABASE_URL="mysql://root:password@localhost:3306/webgis_pkh"
 ```
+> **💡 Catatan Developer:** 
+> Jika Anda belum memiliki database lokal, aplikasi masih dapat berjalan normal untuk tampilan peta publik karena aplikasi dikonfigurasi memberikan default _fallback_ pada data dummy statis (`app/data/dummy.ts`).
 
-> **Catatan:** Untuk menjalankan tanpa database, aplikasi tetap berjalan menggunakan data dummy yang sudah tersedia di `app/data/dummy.ts`. Login tetap berfungsi tanpa database.
+### 4. Setup Database Schema (Opsional)
 
-### 3. Setup database (opsional)
-
+Jika koneksi `.env` telah diset:
 ```bash
+# Migrasi skema dari Prisma ke MySQL lokal
 npx prisma migrate dev --name init
+
+# Generate Prisma Client Typings
 npx prisma generate
 ```
 
-### 4. Jalankan development server
+### 5. Jalankan Web Server
 
 ```bash
 npm run dev
 ```
-
-Buka [http://localhost:3000](http://localhost:3000)
-
----
-
-## Akun Demo
-
-| NIP / Username | Password | Role |
-|---|---|---|
-| `admin` | `admin123` | Administrator |
-| `199001012020121001` | `dinsos2024` | Operator |
-
-> Kredensial ini ada di `app/api/auth/route.ts`. Untuk production, sambungkan ke tabel `User` di database.
+Buka browser dan navigasi ke [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Struktur Folder
+## 🔑 Demo Akses Administrator
 
-```
-webgis/
-├── app/
-│   ├── admin/
-│   │   ├── layout.tsx          # Layout sidebar + topbar admin
-│   │   ├── page.tsx            # Dashboard overview
-│   │   ├── penerima/page.tsx   # Manajemen data penerima
-│   │   ├── laporan/page.tsx    # Laporan
-│   │   └── pengguna/page.tsx   # Manajemen pengguna
-│   ├── api/
-│   │   ├── auth/route.ts       # POST login, DELETE logout
-│   │   └── stats/route.ts      # GET statistik ringkasan
-│   ├── components/
-│   │   ├── MapWrapper.tsx      # Komponen peta utama (Leaflet)
-│   │   ├── IndicatorControl.tsx # Panel pilihan indikator
-│   │   └── WargaTable.tsx      # Tabel data penerima per wilayah
-│   ├── data/
-│   │   └── dummy.ts            # Data dummy kecamatan, desa, warga
-│   ├── login/page.tsx          # Halaman login
-│   ├── types/index.ts          # TypeScript type definitions
-│   ├── utils/mapUtils.ts       # Helper fungsi peta (quantile, warna)
-│   ├── globals.css             # Global styles + Tailwind
-│   ├── layout.tsx              # Root layout
-│   └── page.tsx                # Halaman utama (peta publik)
-├── components/
-│   └── FormLaporan.tsx         # Komponen form laporan
+Aplikasi menyediakan dua jenis akses kredensial yang dapat dicoba secara lokal:
+
+| Role | Username / NIP | Password | Keterangan Akses |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin` | `admin123` | Akses penuh, manajemen pengguna, pengelolaan wilayah, dan dasbor. |
+| **Operator** | `199001012020121001` | `dinsos2024` | Hak akses terbatas (fokus mengelola data warga). |
+
+> Konfigurasi API mock kredensial ini terletak di `app/api/auth/route.ts`. Sangat disarankan untuk segera menghubungkannya secara penuh pada tabel relasi DB (`User` Model) ketika menuju tahapan _Production_.
+
+---
+
+## 📁 Hierarki Direktori
+
+```text
+webgis-dinsospwk/
+├── app/                      # Next.js App Router
+│   ├── admin/                # Proteksi Modul Administrator & CMS
+│   │   ├── ...               # Subsistem: Dashboard, Data Penerima, Pengguna
+│   ├── api/                  # Edge/Node API Routes (Backend Endpoints)
+│   ├── components/           # Reusable UI Components
+│   ├── data/                 # Data Statis & Tipe Dummy
+│   ├── types/                # Typescript Global Types Definition
+│   ├── utils/                # Helper dan Utility Logic (Geospatial & Formatters)
+│   ├── globals.css           # Variabel Tema Base & Tailwind Inject
+│   ├── layout.tsx            # Komponen Root Header/Footer
+│   └── page.tsx              # Public Homepage (Landing Peta WebGIS)
 ├── prisma/
-│   └── schema.prisma           # Schema database
-├── public/
-│   ├── desa.geojson            # Data GeoJSON batas desa
-│   └── kecamatan.geojson       # Data GeoJSON batas kecamatan
-├── middleware.ts               # Proteksi route /admin
-├── next.config.ts
-├── tailwind.config.ts
-├── tsconfig.json
-└── .env.example
+│   └── schema.prisma         # Definisi Prisma Schema Entity & Models
+├── public/                 
+│   ├── desa.geojson          # GeoJSON Shapefile Batas Desa
+│   └── kecamatan.geojson     # GeoJSON Shapefile Batas Kecamatan
+├── middleware.ts             # Gateway Authentication Next.js (Edge JWT Auth)
+├── tailwind.config.ts        # Konfigurasi Styling Custom & Theme
+└── ...
 ```
 
 ---
 
-## Alur Autentikasi
+## 🚢 Panduan Deployment
 
-```
-User → POST /api/auth { nip, password }
-     → Server validasi kredensial
-     → Set cookie httpOnly "sig_session" (8 jam)
-     → Redirect ke /admin
-
-Akses /admin/* → middleware.ts cek cookie
-              → Jika tidak ada → redirect ke /login
-              → Jika ada → lanjut
-
-Logout → DELETE /api/auth → hapus cookie → redirect /login
-```
-
----
-
-## Build untuk Production
-
+### Build Server Produksi
 ```bash
 npm run build
 npm run start
 ```
 
-### Deploy ke Vercel
+### Deploy Otomatis (Vercel)
+Aplikasi WebGIS ini dioptimasi penuh pada arsitektur platform Next.js.
+1. Hubungkan repository instalasi GitHub ini dengan [dashboard Vercel](https://vercel.com).
+2. Tambahkan `DATABASE_URL` dan variabel env yang relevan pada **Environment Variables** di _Project Settings_ Vercel.
+3. Proses _Deployment Node_ akan tereskalasi otomatis oleh infrastruktur platform.
 
-1. Push ke GitHub
-2. Import project di [vercel.com](https://vercel.com)
-3. Tambahkan environment variable `DATABASE_URL` di Vercel dashboard
-4. Deploy otomatis
-
-### Deploy ke VPS / Server sendiri
-
+### Deploy Server Tradisional (Linux VPS)
+Gunakan *Process Manager* tangguh (misalnya PM2) agar runtime instance terjaga prima di *background*:
 ```bash
 npm run build
-npm run start  # atau gunakan PM2
-
-# Dengan PM2:
 npm install -g pm2
-pm2 start npm --name "webgis-pkh" -- start
+pm2 start npm --name "webgis-dinsospwk" -- run start
 pm2 save
 pm2 startup
 ```
 
 ---
 
-## Mengganti Data Dummy ke Database
-
-1. Uncomment dan lengkapi `prisma/schema.prisma`
-2. Jalankan `npx prisma migrate dev`
-3. Di `app/api/auth/route.ts`, ganti array `VALID_USERS` dengan query Prisma ke tabel `Admin`/`User`
-4. Di `app/components/MapWrapper.tsx`, ganti import `dummyKecamatan` dengan `fetch('/api/data/kecamatan')`
-
----
-
-## Konfigurasi Basemap
-
-Basemap default menggunakan OpenStreetMap. Untuk mengganti ke CartoDB atau Mapbox, edit baris `L.tileLayer(...)` di `app/components/MapWrapper.tsx`:
-
-```typescript
-// CartoDB Positron (terang, bersih)
-"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-
-// CartoDB Dark Matter (gelap)
-"https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-```
-
----
-
-## Troubleshooting
-
-**Peta tidak muncul / `map-container` already initialized**
-— Pastikan `MapWrapper` hanya dirender sekali. Sudah ditangani dengan pengecekan `if (mapRef.current) return` di `useEffect`.
-
-**Error `Cannot find module 'leaflet'`**
-— Jalankan `npm install`. Pastikan `react-leaflet` versi `^4.2.1` (bukan v5) untuk kompatibilitas dengan React 19.
-
-**Login selalu gagal**
-— Cek console browser. Pastikan API `/api/auth` merespons. Kredensial default: `admin` / `admin123`.
-
-**GeoJSON tidak termuat**
-— Pastikan file `public/desa.geojson` dan `public/kecamatan.geojson` ada. Properti kunci yang digunakan: `WADMKC` (kecamatan) dan `WADMKD` (desa).
+<div align="center">
+<p>
+  <i>Dikembangkan untuk modernisasi ekosistem tata kelola data kesejahteraan sosial.</i><br>
+  <b>✨ Sistem Informasi Geografis — Dinas Sosial.</b>
+</p>
+</div>
