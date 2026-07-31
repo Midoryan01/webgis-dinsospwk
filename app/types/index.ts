@@ -22,7 +22,7 @@ export type PKHRecord = {
 };
 
 /** Metrik yang ditampilkan di peta choropleth */
-export type MetricType = "jumlah" | "per1000";
+export type MetricType = "jumlah" | "graduasi";
 
 /** State loading data GeoJSON */
 export type LoadState = "idle" | "loading" | "success" | "error";
@@ -41,12 +41,20 @@ export type GeoCache = {
  * - NIK 16 digit melebihi batas Number.MAX_SAFE_INTEGER
  * - Ada leading zero yang harus tetap terjaga
  * - Perlu operasi string (validasi regex, display)
+ * 
+ * NOTE: nik sudah tidak ada di database, tapi tipe data domain lama tetap dipertahankan
+ * sebagai opsional atau disesuaikan jika diperlukan.
  */
 export interface Warga {
-  /** NIK 16 digit — selalu string, jangan dikonversi ke number */
-  nik:    string;
-  nama:   string;
-  alamat: string;
+  nama:             string;
+  alamat:           string;
+  aud:              number;
+  sd:               number;
+  smp:              number;
+  sma:              number;
+  disabilitas:      number;
+  lansia:           number;
+  kategoriGraduasi: string;
 }
 
 // ─── 3. Dashboard / Admin UI ──────────────────────────────────────────────────
@@ -74,8 +82,7 @@ export interface KecamatanRow {
  */
 export interface RecentActivity {
   nama: string;
-  /** NIK ditampilkan — boleh format "32140x...xxx" untuk privasi */
-  nik:  string;
+  nik?: string;
   desa: string;
   tgl:  string; // format tampilan bebas, misal "05 Apr 2026"
 }
@@ -91,12 +98,10 @@ export interface Toast {
 
 /** State form tambah penerima PKH */
 export interface FormState {
-  /** NIK 16 digit — disimpan sebagai string */
-  nik:       string;
-  nama:      string;
+  nama: string;
   kecamatan: string;
-  desa:      string;
-  alamat:    string;
+  desa: string;
+  alamat: string;
 }
 
 /**

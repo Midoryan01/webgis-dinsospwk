@@ -11,11 +11,10 @@
  * - Legend update otomatis saat isDark berubah
  */
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import type { MetricType, Warga } from "@/app/types";
 import type { LoadState, GeoCache } from "@/app/types";
-import { dummyKecamatan, dummyDesa, dummyMasyarakat } from "@/app/data/dummy";
 import {
   valueFor,
   quantileBreaks,
@@ -91,6 +90,30 @@ export function useGeoLayers({
   const breaksKecRef   = useRef<number[]>([]);
   const breaksDesaRef  = useRef<number[]>([]);
 
+  // ── States untuk data statistik MySQL dinamis
+  const [kecStats, setKecStats] = useState<Record<string, any>>({});
+  const [desaStats, setDesaStats] = useState<Record<string, any>>({});
+  const [masyarakat, setMasyarakat] = useState<Record<string, any>>({});
+
+  // ── Load live statistics from MySQL
+  useEffect(() => {
+    fetch("/api/map-data")
+      .then((res) => {
+        if (!res.ok) throw new Error("Gagal mengambil data peta dari database.");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.kecamatanStats && data.desaStats && data.masyarakat) {
+          setKecStats(data.kecamatanStats);
+          setDesaStats(data.desaStats);
+          setMasyarakat(data.masyarakat);
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load map data from database:", err);
+      });
+  }, []);
+
   // ── Legend ────────────────────────────────────────────────────────────────
 
   const rebuildLegend = useCallback((
@@ -120,9 +143,9 @@ export function useGeoLayers({
     const code    = (f?.properties as Record<string, string>)?.WADMKC;
     const visible = kecVisibleRef.current.has(code);
     if (!visible) return { opacity: 0, fillOpacity: 0, weight: 0 };
-    const v = valueFor(dummyKecamatan[code], currentMetric);
-    return { color: STROKE_KEC, weight: 2.5, fillColor: getColorFor(v, breaks), fillOpacity: 0.72, opacity: 1 };
-  }, []);
+    const v = valueFor(kecStats[code], currentMetric);
+    return { color: STROKE_KEC, weight: 2.5, fillColor: getColorFor(v, breaks, currentMetric), fillOpacity: 0.72, opacity: 1 };
+  }, [kecStats]);
 
   const styleDesa = useCallback((
     f: GeoJSON.Feature | undefined,
@@ -136,9 +159,9 @@ export function useGeoLayers({
     const compositeKey = `${kec}:${name}`;
     const visible = desaVisibleRef.current.has(compositeKey);
     if (!visible) return { opacity: 0, fillOpacity: 0, weight: 0 };
-    const v = valueFor(dummyDesa[name], currentMetric);
-    return { color: STROKE_DESA, weight: 1.5, fillColor: getColorFor(v, breaks), fillOpacity: 0.72, opacity: 1 };
-  }, []);
+    const v = valueFor(desaStats[name], currentMetric);
+    return { color: STROKE_DESA, weight: 1.5, fillColor: getColorFor(v, breaks, currentMetric), fillOpacity: 0.72, opacity: 1 };
+  }, [desaStats]);
 
   // ── Apply visibility to a single sub-layer (style + pointer-events) ───────
 
@@ -186,7 +209,7 @@ export function useGeoLayers({
 
     // ── Kecamatan ──────────────────────────────────────────────────────────
     const valsKec  = (kecGeo.features || [])
-      .map(f => valueFor(dummyKecamatan[(f.properties as Record<string, string>)?.WADMKC], currentMetric))
+      .map(f => valueFor(kecStats[(f.properties as Record<string, string>)?.WADMKC], currentMetric))
       .filter(v => v !== 0 && !isNaN(v));
     const breaksKec = quantileBreaks(valsKec, 5);
     breaksKecRef.current = breaksKec;
@@ -197,11 +220,11 @@ export function useGeoLayers({
         const props  = f.properties as Record<string, string>;
         const code   = props?.WADMKC;
         const name   = code ?? "Unknown";
-        const v      = valueFor(dummyKecamatan[code], currentMetric);
-        const metLbl = currentMetric === "jumlah" ? "Jumlah PKH" : "PKH/1000";
+        const v      = valueFor(kecStats[code], currentMetric);
+        const metLbl = currentMetric === "jumlah" ? "Jumlah PKH" : "Graduasi Dominan";
         const vLbl   = currentMetric === "jumlah"
-          ? `${dummyKecamatan[code]?.jumlah ?? 0}`
-          : `${Math.round(v * 10) / 10}`;
+          ? `${kecStats[code]?.jumlah ?? 0} warga`
+          : `${kecStats[code]?.kategoriDominan ?? "Rendah"} (Skor: ${kecStats[code]?.skorDominan ?? 0})`;
 
         layer.bindTooltip(tooltipHtml([
           { bold:   `Kecamatan: ${name}` },
@@ -241,7 +264,7 @@ export function useGeoLayers({
 
     // ── Desa ───────────────────────────────────────────────────────────────
     const valsDesa  = (desaGeo.features || [])
-      .map(f => valueFor(dummyDesa[(f.properties as Record<string, string>)?.WADMKD], currentMetric))
+      .map(f => valueFor(desaStats[(f.properties as Record<string, string>)?.WADMKD], currentMetric))
       .filter(v => v !== 0 && !isNaN(v));
     const breaksDesa = quantileBreaks(valsDesa, 5);
     breaksDesaRef.current = breaksDesa;
@@ -254,11 +277,11 @@ export function useGeoLayers({
         const kecName = props?.WADMKC ?? "";
         // Composite key — HARUS sama persis dengan yang ada di desaVisibleRef
         const compositeKey = `${kecName}:${name}`;
-        const v       = valueFor(dummyDesa[name], currentMetric);
-        const metLbl  = currentMetric === "jumlah" ? "Jumlah PKH" : "PKH/1000";
+        const v       = valueFor(desaStats[name], currentMetric);
+        const metLbl  = currentMetric === "jumlah" ? "Jumlah PKH" : "Graduasi Dominan";
         const vLbl    = currentMetric === "jumlah"
-          ? `${dummyDesa[name]?.jumlah ?? 0}`
-          : `${Math.round(v * 10) / 10}`;
+          ? `${desaStats[name]?.jumlah ?? 0} warga`
+          : `${desaStats[name]?.kategoriDominan ?? "Rendah"} (Skor: ${desaStats[name]?.skorDominan ?? 0})`;
 
         layer.bindTooltip(tooltipHtml([
           { bold:   `Desa: ${name}` },
@@ -280,7 +303,7 @@ export function useGeoLayers({
         });
         layer.on("click", () => {
           if (!desaVisibleRef.current.has(compositeKey)) return;
-          onSelectWarga(dummyMasyarakat[name] ?? []);
+          onSelectWarga(masyarakat[name] ?? []);
           onSelectWilayah(`Desa/Kel. ${name}`);
         });
 
@@ -291,7 +314,7 @@ export function useGeoLayers({
     });
     desaLayerRef.current = desaLayer;
     desaLayer.addTo(map);
-  }, [mapRef, styleKec, styleDesa, rebuildLegend, onSelectWarga, onSelectWilayah]);
+  }, [mapRef, styleKec, styleDesa, rebuildLegend, onSelectWarga, onSelectWilayah, kecStats, desaStats, masyarakat]);
 
   // ── Re-style + fix pointer-events saat visibility berubah ────────────────
 
@@ -354,10 +377,11 @@ export function useGeoLayers({
         onErrorMessage(err.message || "GeoJSON tidak dapat dimuat.");
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [kecStats, desaStats, masyarakat]);
 
   // ── Re-render saat metric berubah ────────────────────────────────────────
   useEffect(() => {
     if (geoCacheRef.current) renderLayers(geoCacheRef.current, metric);
   }, [metric, renderLayers]);
 }
+

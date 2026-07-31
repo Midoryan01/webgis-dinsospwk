@@ -14,7 +14,7 @@
 import { useState, useMemo } from "react";
 import type { Warga } from "@/app/types";
 
-type SortField = keyof Pick<Warga, "nama" | "nik" | "alamat">;
+type SortField = keyof Warga;
 type SortDir   = "asc" | "desc";
 
 interface Props {
@@ -48,11 +48,18 @@ export default function WargaTable({ selectedWilayah, selectedWarga, isCollapsed
     let rows  = selectedWarga;
     if (q) rows = rows.filter(w =>
       w.nama.toLowerCase().includes(q) ||
-      w.nik.includes(q) ||
-      w.alamat.toLowerCase().includes(q)
+      w.alamat.toLowerCase().includes(q) ||
+      w.kategoriGraduasi.toLowerCase().includes(q)
     );
     const dir = sortDir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => a[sortBy].localeCompare(b[sortBy], "id") * dir);
+    return [...rows].sort((a, b) => {
+      const va = a[sortBy];
+      const vb = b[sortBy];
+      if (typeof va === "number" && typeof vb === "number") {
+        return (va - vb) * dir;
+      }
+      return String(va).localeCompare(String(vb), "id") * dir;
+    });
   }, [selectedWarga, search, sortBy, sortDir]);
 
   const hasData = selectedWarga.length > 0;
@@ -68,7 +75,7 @@ export default function WargaTable({ selectedWilayah, selectedWarga, isCollapsed
         {label}
         <span style={{
           opacity: sortBy === field ? 0.85 : 0.2,
-          color: sortBy === field ? "var(--primary, #1A6EA8)" : "inherit",
+          color: sortBy === field ? (style?.color || "var(--primary, #1A6EA8)") : "inherit",
         }}>
           {sortBy === field && sortDir === "desc" ? <DescIcon /> : <AscIcon />}
         </span>
@@ -140,7 +147,7 @@ export default function WargaTable({ selectedWilayah, selectedWarga, isCollapsed
             <span style={{ color: "var(--map-panel-text-muted, #95aabf)" }}><SearchIcon /></span>
             <input
               type="search"
-              placeholder="Cari nama, NIK, alamat…"
+              placeholder="Cari nama, alamat…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -216,25 +223,64 @@ export default function WargaTable({ selectedWilayah, selectedWarga, isCollapsed
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5,color:"var(--map-panel-text,#0d1f33)" }}>
               <thead>
                 <tr style={{ background: "var(--map-panel-row-odd,#f7f9fc)", position: "sticky", top: 0, zIndex: 1 }}>
-                  <th style={{ ...thS, cursor: "default", width: 38, color:"var(--map-panel-text,#0d1f33)" }}>No</th>
-                  <ThSort field="nik"    label="NIK" style={{ color: "var(--map-panel-text,#0d1f33)" }} />
-                  <ThSort field="nama"   label="Nama Lengkap" style={{ color: "var(--map-panel-text,#0d1f33)" }} />
-                  <ThSort field="alamat" label="Alamat" style={{ color: "var(--map-panel-text,#0d1f33)" }} />
+                  <th style={{ ...thS, cursor: "default", width: 38, color: "var(--map-panel-text,#0d1f33)" }}>No</th>
+                  <ThSort field="nama"   label="PENGURUS" style={{ color: "var(--map-panel-text,#0d1f33)", minWidth: 150 }} />
+                  <ThSort field="alamat" label="Alamat" style={{ color: "var(--map-panel-text,#0d1f33)", minWidth: 180 }} />
+                  <ThSort field="aud"    label="AUD" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 50 }} />
+                  <ThSort field="sd"     label="SD" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 50 }} />
+                  <ThSort field="smp"    label="SMP" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 50 }} />
+                  <ThSort field="sma"    label="SMA" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 50 }} />
+                  <ThSort field="disabilitas" label="DISABILITAS" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 90 }} />
+                  <ThSort field="lansia" label="LANSIA" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 70 }} />
+                  <th style={{ ...thS, cursor: "default", color: "var(--map-panel-text,#0d1f33)", minWidth: 120 }}>KELURAHAN</th>
+                  <ThSort field="kategoriGraduasi" label="Kategori GRADUASI" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", minWidth: 130 }} />
                 </tr>
               </thead>
               <tbody>
-                {displayRows.map((w, i) => (
-                  <tr key={w.nik} style={{
-                    background: i % 2 === 0
-                      ? "var(--map-panel-row-even,#fff)"
-                      : "var(--map-panel-row-odd,#f7f9fc)",
-                  }}>
-                    <td style={{ ...tdS, color: "var(--map-panel-text,#0d1f33)", width: 38, fontVariantNumeric: "tabular-nums" }}>{i + 1}</td>
-                    <td style={{ ...tdS, fontFamily: "'SF Mono','Fira Code',monospace", fontSize: 11.5, color: "var(--map-panel-text,#0d1f33)" }}>{w.nik}</td>
-                    <td style={{ ...tdS, fontWeight: 600, color: "var(--map-panel-text,#0d1f33)" }}>{w.nama}</td>
-                    <td style={{ ...tdS, color: "var(--map-panel-text,#0d1f33)" }}>{w.alamat}</td>
-                  </tr>
-                ))}
+                {displayRows.map((w, i) => {
+                  const kelurahan = selectedWilayah ? selectedWilayah.replace("Desa/Kel. ", "") : "Munjuljaya";
+                  return (
+                    <tr key={w.nama} style={{
+                      background: i % 2 === 0
+                        ? "var(--map-panel-row-even,#fff)"
+                        : "var(--map-panel-row-odd,#f7f9fc)",
+                    }}>
+                      <td style={{ ...tdS, color: "var(--map-panel-text,#0d1f33)", width: 38, fontVariantNumeric: "tabular-nums" }}>{i + 1}</td>
+                      <td style={{ ...tdS }}>
+                        <div style={{ fontWeight: 600, color: "var(--map-panel-text,#0d1f33)" }}>{w.nama}</div>
+                      </td>
+                      <td style={{ ...tdS, color: "var(--map-panel-text,#0d1f33)" }}>{w.alamat}</td>
+                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.aud > 0 ? 700 : 400, color: w.aud > 0 ? "#ef4444" : "var(--map-panel-text,#0d1f33)" }}>{w.aud}</td>
+                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.sd > 0 ? 700 : 400, color: w.sd > 0 ? "#ef4444" : "var(--map-panel-text,#0d1f33)" }}>{w.sd}</td>
+                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.smp > 0 ? 700 : 400, color: w.smp > 0 ? "#d97706" : "var(--map-panel-text,#0d1f33)" }}>{w.smp}</td>
+                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.sma > 0 ? 700 : 400, color: w.sma > 0 ? "#22c55e" : "var(--map-panel-text,#0d1f33)" }}>{w.sma}</td>
+                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.disabilitas > 0 ? 700 : 400, color: w.disabilitas > 0 ? "#d97706" : "var(--map-panel-text,#0d1f33)" }}>{w.disabilitas}</td>
+                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.lansia > 0 ? 700 : 400, color: w.lansia > 0 ? "#d97706" : "var(--map-panel-text,#0d1f33)" }}>{w.lansia}</td>
+                      <td style={{ ...tdS, fontWeight: 500, color: "var(--map-panel-text,#0d1f33)" }}>{kelurahan.toUpperCase()}</td>
+                      <td style={{ ...tdS, textAlign: "center" }}>
+                        <span style={{
+                          display: "inline-block",
+                          padding: "3px 8px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          backgroundColor: w.kategoriGraduasi === "Tinggi"
+                            ? "rgba(34, 197, 94, 0.15)"
+                            : w.kategoriGraduasi === "Sedang"
+                            ? "rgba(234, 179, 8, 0.15)"
+                            : "rgba(239, 68, 68, 0.15)",
+                          color: w.kategoriGraduasi === "Tinggi"
+                            ? "#16a34a"
+                            : w.kategoriGraduasi === "Sedang"
+                            ? "#d97706"
+                            : "#ef4444",
+                        }}>
+                          {w.kategoriGraduasi}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
