@@ -76,6 +76,7 @@ export function useGeoLayers({
   const metricRef      = useRef(metric);
   const kecVisibleRef  = useRef(kecVisible);
   const desaVisibleRef = useRef(desaVisible);
+  const masyarakatRef  = useRef<Record<string, any>>({});
 
   useEffect(() => { isDarkRef.current      = isDark;      }, [isDark]);
   useEffect(() => { metricRef.current      = metric;      }, [metric]);
@@ -107,6 +108,7 @@ export function useGeoLayers({
           setKecStats(data.kecamatanStats);
           setDesaStats(data.desaStats);
           setMasyarakat(data.masyarakat);
+          masyarakatRef.current = data.masyarakat;
         }
       })
       .catch((err) => {
@@ -224,7 +226,9 @@ export function useGeoLayers({
         const metLbl = currentMetric === "jumlah" ? "Jumlah PKH" : "Graduasi Dominan";
         const vLbl   = currentMetric === "jumlah"
           ? `${kecStats[code]?.jumlah ?? 0} warga`
-          : `${kecStats[code]?.kategoriDominan ?? "Rendah"} (Skor: ${kecStats[code]?.skorDominan ?? 0})`;
+          : (kecStats[code]?.kategoriDominan === "Tidak Ada Data" || !kecStats[code] || v < 0)
+            ? "Tidak ada data"
+            : `${kecStats[code]?.kategoriDominan} (Skor: ${kecStats[code]?.skorDominan})`;
 
         layer.bindTooltip(tooltipHtml([
           { bold:   `Kecamatan: ${name}` },
@@ -281,7 +285,9 @@ export function useGeoLayers({
         const metLbl  = currentMetric === "jumlah" ? "Jumlah PKH" : "Graduasi Dominan";
         const vLbl    = currentMetric === "jumlah"
           ? `${desaStats[name]?.jumlah ?? 0} warga`
-          : `${desaStats[name]?.kategoriDominan ?? "Rendah"} (Skor: ${desaStats[name]?.skorDominan ?? 0})`;
+          : (desaStats[name]?.kategoriDominan === "Tidak Ada Data" || !desaStats[name] || v < 0)
+            ? "Tidak ada data"
+            : `${desaStats[name]?.kategoriDominan} (Skor: ${desaStats[name]?.skorDominan})`;
 
         layer.bindTooltip(tooltipHtml([
           { bold:   `Desa: ${name}` },
@@ -303,7 +309,9 @@ export function useGeoLayers({
         });
         layer.on("click", () => {
           if (!desaVisibleRef.current.has(compositeKey)) return;
-          onSelectWarga(masyarakat[name] ?? []);
+          const currentMasyarakat = masyarakatRef.current;
+          const wargaList = currentMasyarakat[name] ?? [];
+          onSelectWarga(wargaList);
           onSelectWilayah(`Desa/Kel. ${name}`);
         });
 

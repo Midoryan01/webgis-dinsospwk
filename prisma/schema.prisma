@@ -12,14 +12,12 @@ datasource db {
 model Kecamatan {
   id        Int      @id @default(autoincrement())
   nama      String   @unique // Contoh: "Purwakarta"
-  penduduk  Int      // Total penduduk kecamatan
   desa      Desa[]   // Relasi ke tabel Desa
 }
 
 model Desa {
   id            Int                @id @default(autoincrement())
   nama          String             @unique // Contoh: "Nagri Kidul"
-  penduduk      Int                // Total penduduk desa
   kecamatanId   Int
   kecamatan     Kecamatan          @relation(fields: [kecamatanId], references: [id])
   warga         Warga[]            // Relasi ke tabel Warga

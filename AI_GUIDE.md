@@ -30,8 +30,8 @@ Variabel lingkungan yang dibutuhkan tersimpan pada file `.env`:
 
 ```
 User (id, nip [unique], nama, password [bcrypt], role, createdAt, updatedAt)
-Kecamatan (id, nama [unique], penduduk)
-Desa (id, nama [unique], penduduk, kecamatanId -> Kecamatan.id)
+Kecamatan (id, nama [unique])
+Desa (id, nama [unique], kecamatanId -> Kecamatan.id)
 Warga (id, nama, alamat, aud, sd, smp, sma, disabilitas, lansia, kategoriGraduasi, desaId -> Desa.id)
 RekapGraduasiDesa (id, desaId [unique] -> Desa.id, totalRendah, totalSedang, totalTinggi, kategoriDominan, skorDominan, updatedAt)
 ```

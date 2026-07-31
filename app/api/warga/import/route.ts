@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     if (kecamatanBaruMap.size > 0) {
       for (const [lowerKey, originalName] of kecamatanBaruMap.entries()) {
-        const created = await prisma.kecamatan.create({ data: { nama: originalName, penduduk: 0 } });
+        const created = await prisma.kecamatan.create({ data: { nama: originalName } });
         kecamatanMap.set(lowerKey, created.id);
       }
       console.log(`[IMPORT_DEBUG] ${kecamatanBaruMap.size} kecamatan baru dibuat.`);
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         const kecId = kecamatanMap.get(kecamatanName.toLowerCase());
         if (kecId) {
           const created = await prisma.desa.create({
-            data: { nama: originalName, penduduk: 0, kecamatanId: kecId },
+            data: { nama: originalName, kecamatanId: kecId },
           });
           desaMap.set(lowerKey, created);
         }

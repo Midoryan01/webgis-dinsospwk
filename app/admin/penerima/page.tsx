@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { z } from "zod";
+import Pagination from "@/app/components/Pagination";
 
 // ─── 1. Skema Validasi Zod untuk Import Warga ───────────────────────────────
 const wargaSchema = z.object({
@@ -57,6 +58,8 @@ interface WargaDb {
   kecamatan: string;
 }
 
+type SortField = "id" | "nama" | "alamat" | "kecamatan" | "desa" | "aud" | "sd" | "smp" | "sma" | "disabilitas" | "lansia" | "kategoriGraduasi";
+
 export default function PenerimaPage() {
   const [activeTab, setActiveTab] = useState<"daftar" | "import">("daftar");
   const [wargaList, setWargaList] = useState<WargaDb[]>([]);
@@ -64,9 +67,24 @@ export default function PenerimaPage() {
   const [isPending, startTransition] = useTransition();
 
   // Filter & Search states (Daftar)
-  const [search, setSearch] = useState("");
+  const [searchNama, setSearchNama] = useState("");
+  const [searchAlamat, setSearchAlamat] = useState("");
   const [filterKec, setFilterKec] = useState("");
   const [filterDesa, setFilterDesa] = useState("");
+  const [filterGraduasi, setFilterGraduasi] = useState("");
+  const [filterKomponen, setFilterKomponen] = useState(""); // "" | "aud" | "sd" | "smp" | "sma" | "disabilitas" | "lansia" | "ada"
+
+  // Sorting states
+  const [sortField, setSortField] = useState<SortField | null>("nama");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  // Pagination states (Tab 1: Daftar)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Pagination states (Tab 2: Import Preview)
+  const [importPage, setImportPage] = useState(1);
+  const [importPageSize, setImportPageSize] = useState(10);
 
   // Import states
   const [importRows, setImportRows] = useState<ParsedRow[]>([]);
@@ -128,6 +146,44 @@ export default function PenerimaPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // ── Sorting Toggle Helper
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === "asc") setSortDirection("desc");
+      else {
+        setSortField(null);
+        setSortDirection("asc");
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  // ── Reset Filters Helper
+  const resetFilters = () => {
+    setSearchNama("");
+    setSearchAlamat("");
+    setFilterKec("");
+    setFilterDesa("");
+    setFilterGraduasi("");
+    setFilterKomponen("");
+    setSortField("nama");
+    setSortDirection("asc");
+    setCurrentPage(1);
+  };
+
+  const isAnyFilterActive = !!(
+    searchNama ||
+    searchAlamat ||
+    filterKec ||
+    filterDesa ||
+    filterGraduasi ||
+    filterKomponen ||
+    (sortField && sortField !== "nama") ||
+    sortDirection !== "asc"
+  );
+
   // ── Helper List filter
   const uniqueKecamatans = useMemo(() => {
     return Array.from(new Set(wargaList.map(w => w.kecamatan))).sort();
@@ -141,15 +197,70 @@ export default function PenerimaPage() {
     return Array.from(new Set(filtered.map(w => w.desa))).sort();
   }, [wargaList, filterKec]);
 
-  const filteredWarga = useMemo(() => {
-    return wargaList.filter(w => {
-      const matchSearch = w.nama.toLowerCase().includes(search.toLowerCase()) || 
-                          w.alamat.toLowerCase().includes(search.toLowerCase());
-      const matchKec = filterKec ? w.kecamatan === filterKec : true;
-      const matchDesa = filterDesa ? w.desa === filterDesa : true;
-      return matchSearch && matchKec && matchDesa;
+  // ── Filter & Sorting Calculation
+  const filteredAndSortedWarga = useMemo(() => {
+    let result = wargaList.filter(w => {
+      const matchNama = !searchNama || w.nama.toLowerCase().includes(searchNama.toLowerCase().trim());
+      const matchAlamat = !searchAlamat || w.alamat.toLowerCase().includes(searchAlamat.toLowerCase().trim());
+      const matchKec = !filterKec || w.kecamatan === filterKec;
+      const matchDesa = !filterDesa || w.desa === filterDesa;
+      const matchGraduasi = !filterGraduasi || w.kategoriGraduasi === filterGraduasi;
+
+      let matchKomponen = true;
+      if (filterKomponen === "aud") matchKomponen = w.aud > 0;
+      else if (filterKomponen === "sd") matchKomponen = w.sd > 0;
+      else if (filterKomponen === "smp") matchKomponen = w.smp > 0;
+      else if (filterKomponen === "sma") matchKomponen = w.sma > 0;
+      else if (filterKomponen === "disabilitas") matchKomponen = w.disabilitas > 0;
+      else if (filterKomponen === "lansia") matchKomponen = w.lansia > 0;
+      else if (filterKomponen === "ada") matchKomponen = (w.aud + w.sd + w.smp + w.sma + w.disabilitas + w.lansia) > 0;
+
+      return matchNama && matchAlamat && matchKec && matchDesa && matchGraduasi && matchKomponen;
     });
-  }, [wargaList, search, filterKec, filterDesa]);
+
+    if (sortField) {
+      result.sort((a, b) => {
+        let valA: any = a[sortField];
+        let valB: any = b[sortField];
+
+        if (typeof valA === "string") valA = valA.toLowerCase();
+        if (typeof valB === "string") valB = valB.toLowerCase();
+
+        if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+        if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [wargaList, searchNama, searchAlamat, filterKec, filterDesa, filterGraduasi, filterKomponen, sortField, sortDirection]);
+
+  // Reset current page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchNama, searchAlamat, filterKec, filterDesa, filterGraduasi, filterKomponen, sortField, sortDirection]);
+
+  // ── Paginated Warga Slicing
+  const paginatedWarga = useMemo(() => {
+    if (pageSize === -1) return filteredAndSortedWarga;
+    const start = (currentPage - 1) * pageSize;
+    return filteredAndSortedWarga.slice(start, start + pageSize);
+  }, [filteredAndSortedWarga, currentPage, pageSize]);
+
+  const totalPages = pageSize === -1 ? 1 : Math.ceil(filteredAndSortedWarga.length / pageSize);
+
+  // ── Paginated Import Rows
+  const paginatedImportRows = useMemo(() => {
+    if (importPageSize === -1) return importRows;
+    const start = (importPage - 1) * importPageSize;
+    return importRows.slice(start, start + importPageSize);
+  }, [importRows, importPage, importPageSize]);
+
+  const totalImportPages = importPageSize === -1 ? 1 : Math.ceil(importRows.length / importPageSize);
+
+  useEffect(() => {
+    setImportPage(1);
+  }, [importRows.length]);
 
   // ── Parse Excel ke JSON
   const handleFileUpload = (file: File) => {
@@ -472,70 +583,184 @@ export default function PenerimaPage() {
       {/* ────────────────── TAB 1: DAFTAR PENERIMA ────────────────── */}
       {activeTab === "daftar" && (
         <div className="card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 24 }}>
-          <div className="card-head" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+          {/* Card Head & Actions */}
+          <div className="card-head" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
             <div>
               <h2 className="card-title" style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Data Penerima PKH</h2>
               <p className="card-desc" style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "4px 0 0" }}>
-                Total terdaftar di database MySQL
+                Total terdaftar: <strong style={{ color: "var(--text)" }}>{wargaList.length}</strong> data warga di database
               </p>
             </div>
-            <div className="card-actions" style={{ display: "flex", gap: 10 }}>
-              {/* Search */}
-              <div className="search-box" style={{ display: "flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 10px", background: "var(--surface-2)" }}>
-                <input
-                  type="text"
-                  placeholder="Cari nama, alamat..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: "var(--text)", width: 180 }}
-                />
-              </div>
-
-              {/* Filter Kecamatan */}
-              <select
-                value={filterKec}
-                onChange={e => { setFilterKec(e.target.value); setFilterDesa(""); }}
-                style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "6px 12px", background: "var(--surface-2)", fontSize: 13, color: "var(--text)" }}
-              >
-                <option value="">Kecamatan (Semua)</option>
-                {uniqueKecamatans.map(k => <option key={k} value={k}>{k}</option>)}
-              </select>
-
-              {/* Filter Desa */}
-              <select
-                value={filterDesa}
-                onChange={e => setFilterDesa(e.target.value)}
-                style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "6px 12px", background: "var(--surface-2)", fontSize: 13, color: "var(--text)" }}
-              >
-                <option value="">Desa/Kel. (Semua)</option>
-                {uniqueDesas.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <button
                 className="btn-primary"
                 onClick={() => setShowAddModal(true)}
                 style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, border: "none", background: "var(--primary, #1A6EA8)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
               >
-                Tambah Manual
+                + Tambah Manual
               </button>
             </div>
           </div>
 
-          <div className="table-wrap" style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: 8 }}>
+          {/* ── Comprehensive Filter Toolbar ── */}
+          <div style={{
+            background: "var(--surface-2, #f8fafc)",
+            border: "1px solid var(--border, #e2e8f0)",
+            borderRadius: 10,
+            padding: 16,
+            marginBottom: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>🔍 Filter & Pencarian Data</span>
+              {isAnyFilterActive && (
+                <button
+                  onClick={resetFilters}
+                  style={{
+                    background: "rgba(239, 68, 68, 0.1)",
+                    color: "#ef4444",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    borderRadius: 6,
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                >
+                  <span>✕ Reset Semua Filter</span>
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+              {/* Filter Nama */}
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>Pencarian Nama</label>
+                <input
+                  type="text"
+                  placeholder="Cari nama warga..."
+                  value={searchNama}
+                  onChange={e => setSearchNama(e.target.value)}
+                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", background: "var(--surface)", fontSize: 12.5, color: "var(--text)", outline: "none" }}
+                />
+              </div>
+
+              {/* Filter Alamat */}
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>Pencarian Alamat</label>
+                <input
+                  type="text"
+                  placeholder="Cari jalan / Kp..."
+                  value={searchAlamat}
+                  onChange={e => setSearchAlamat(e.target.value)}
+                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", background: "var(--surface)", fontSize: 12.5, color: "var(--text)", outline: "none" }}
+                />
+              </div>
+
+              {/* Filter Kecamatan */}
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>Kecamatan</label>
+                <select
+                  value={filterKec}
+                  onChange={e => { setFilterKec(e.target.value); setFilterDesa(""); }}
+                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", background: "var(--surface)", fontSize: 12.5, color: "var(--text)", outline: "none" }}
+                >
+                  <option value="">Semua Kecamatan</option>
+                  {uniqueKecamatans.map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+
+              {/* Filter Desa */}
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>Desa / Kelurahan</label>
+                <select
+                  value={filterDesa}
+                  onChange={e => setFilterDesa(e.target.value)}
+                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", background: "var(--surface)", fontSize: 12.5, color: "var(--text)", outline: "none" }}
+                >
+                  <option value="">Semua Desa/Kel.</option>
+                  {uniqueDesas.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+
+              {/* Filter Graduasi */}
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>Kategori Graduasi</label>
+                <select
+                  value={filterGraduasi}
+                  onChange={e => setFilterGraduasi(e.target.value)}
+                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", background: "var(--surface)", fontSize: 12.5, color: "var(--text)", outline: "none" }}
+                >
+                  <option value="">Semua Graduasi</option>
+                  <option value="Rendah">Rendah</option>
+                  <option value="Sedang">Sedang</option>
+                  <option value="Tinggi">Tinggi</option>
+                </select>
+              </div>
+
+              {/* Filter Komponen PKH */}
+              <div>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>Komponen PKH</label>
+                <select
+                  value={filterKomponen}
+                  onChange={e => setFilterKomponen(e.target.value)}
+                  style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 6, padding: "6px 10px", background: "var(--surface)", fontSize: 12.5, color: "var(--text)", outline: "none" }}
+                >
+                  <option value="">Semua Komponen</option>
+                  <option value="aud">Memiliki AUD</option>
+                  <option value="sd">Memiliki SD</option>
+                  <option value="smp">Memiliki SMP</option>
+                  <option value="sma">Memiliki SMA</option>
+                  <option value="disabilitas">Memiliki Disabilitas</option>
+                  <option value="lansia">Memiliki Lansia</option>
+                  <option value="ada">Memiliki Beban (Ada)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="table-wrap" style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "8px 8px 0 0" }}>
             <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
-                  <th style={{ padding: "12px 16px", textAlign: "left" }}>No</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left" }}>Nama</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left" }}>Alamat</th>
-                  <th style={{ padding: "12px 16px", textAlign: "left" }}>Wilayah</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center" }}>AUD</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center" }}>SD</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center" }}>SMP</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center" }}>SMA</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center" }}>Disabilitas</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center" }}>Lansia</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center" }}>Graduasi</th>
+                <tr style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--border)", userSelect: "none" }}>
+                  <th onClick={() => handleSort("id")} style={{ padding: "12px 16px", textAlign: "left", cursor: "pointer" }} title="Klik untuk mengurutkan">
+                    No {sortField === "id" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("nama")} style={{ padding: "12px 16px", textAlign: "left", cursor: "pointer" }} title="Klik untuk mengurutkan Nama">
+                    Nama {sortField === "nama" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("alamat")} style={{ padding: "12px 16px", textAlign: "left", cursor: "pointer" }} title="Klik untuk mengurutkan Alamat">
+                    Alamat {sortField === "alamat" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("desa")} style={{ padding: "12px 16px", textAlign: "left", cursor: "pointer" }} title="Klik untuk mengurutkan Wilayah">
+                    Wilayah {sortField === "desa" || sortField === "kecamatan" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("aud")} style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }} title="Klik untuk mengurutkan AUD">
+                    AUD {sortField === "aud" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("sd")} style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }} title="Klik untuk mengurutkan SD">
+                    SD {sortField === "sd" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("smp")} style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }} title="Klik untuk mengurutkan SMP">
+                    SMP {sortField === "smp" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("sma")} style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }} title="Klik untuk mengurutkan SMA">
+                    SMA {sortField === "sma" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("disabilitas")} style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }} title="Klik untuk mengurutkan Disabilitas">
+                    Disabilitas {sortField === "disabilitas" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("lansia")} style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }} title="Klik untuk mengurutkan Lansia">
+                    Lansia {sortField === "lansia" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
+                  <th onClick={() => handleSort("kategoriGraduasi")} style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }} title="Klik untuk mengurutkan Graduasi">
+                    Graduasi {sortField === "kategoriGraduasi" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -546,43 +771,57 @@ export default function PenerimaPage() {
                       Sedang memuat data warga dari MySQL...
                     </td>
                   </tr>
-                ) : filteredWarga.length === 0 ? (
+                ) : paginatedWarga.length === 0 ? (
                   <tr>
                     <td colSpan={12} style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
-                      Tidak ada data warga ditemukan.
+                      Tidak ada data warga yang cocok dengan filter.
                     </td>
                   </tr>
                 ) : (
-                  filteredWarga.map((w, i) => (
-                    <tr key={w.id} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "transparent" : "var(--surface-2)" }}>
-                      <td style={{ padding: "12px 16px" }}>{i + 1}</td>
-                      <td style={{ padding: "12px 16px", fontWeight: 600 }}>{w.nama}</td>
-                      <td style={{ padding: "12px 16px" }}>{w.alamat}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ fontWeight: 600 }}>Desa {w.desa}</div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Kec. {w.kecamatan}</div>
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.aud}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.sd}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.smp}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.sma}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.disabilitas}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.lansia}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                        <span style={{
-                          padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-                          background: w.kategoriGraduasi === "Tinggi" ? "rgba(34, 197, 94, 0.15)" : w.kategoriGraduasi === "Sedang" ? "rgba(234, 179, 8, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                          color: w.kategoriGraduasi === "Tinggi" ? "#16a34a" : w.kategoriGraduasi === "Sedang" ? "#d97706" : "#ef4444"
-                        }}>
-                          {w.kategoriGraduasi}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                  paginatedWarga.map((w, i) => {
+                    const globalIdx = pageSize === -1 ? i + 1 : (currentPage - 1) * pageSize + i + 1;
+                    return (
+                      <tr key={w.id} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "transparent" : "var(--surface-2)" }}>
+                        <td style={{ padding: "12px 16px" }}>{globalIdx}</td>
+                        <td style={{ padding: "12px 16px", fontWeight: 600 }}>{w.nama}</td>
+                        <td style={{ padding: "12px 16px" }}>{w.alamat}</td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ fontWeight: 600 }}>Desa {w.desa}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Kec. {w.kecamatan}</div>
+                        </td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.aud}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.sd}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.smp}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.sma}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.disabilitas}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.lansia}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                          <span style={{
+                            padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                            background: w.kategoriGraduasi === "Tinggi" ? "rgba(34, 197, 94, 0.15)" : w.kategoriGraduasi === "Sedang" ? "rgba(234, 179, 8, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                            color: w.kategoriGraduasi === "Tinggi" ? "#16a34a" : w.kategoriGraduasi === "Sedang" ? "#d97706" : "#ef4444"
+                          }}>
+                            {w.kategoriGraduasi}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Reusable Pagination Component */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredAndSortedWarga.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="warga"
+          />
         </div>
       )}
 
@@ -731,7 +970,7 @@ export default function PenerimaPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {importRows.map((row) => {
+                    {paginatedImportRows.map((row) => {
                       const isEditing = editingRowIndex === row.index;
                       let statusText: string = row.status;
                       let statusColor = "var(--error, #ef4444)";
@@ -780,8 +1019,6 @@ export default function PenerimaPage() {
                               )}
                             </div>
                           </td>
-
-                          
 
                           {/* Nama */}
                           <td style={{ padding: "10px 14px" }}>
@@ -978,6 +1215,17 @@ export default function PenerimaPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Reusable Pagination for Import Preview */}
+              <Pagination
+                currentPage={importPage}
+                totalPages={totalImportPages}
+                totalItems={importRows.length}
+                pageSize={importPageSize}
+                onPageChange={setImportPage}
+                onPageSizeChange={setImportPageSize}
+                itemLabel="baris"
+              />
             </div>
           )}
         </div>

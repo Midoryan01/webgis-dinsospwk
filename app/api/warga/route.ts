@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     });
     if (!kecObj) {
       kecObj = await prisma.kecamatan.create({
-        data: { nama: kecamatan.trim(), penduduk: 0 },
+        data: { nama: kecamatan.trim() },
       });
     }
 
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
     });
     if (!desaObj) {
       desaObj = await prisma.desa.create({
-        data: { nama: desa.trim(), penduduk: 0, kecamatanId: kecObj.id },
+        data: { nama: desa.trim(), kecamatanId: kecObj.id },
       });
     }
 

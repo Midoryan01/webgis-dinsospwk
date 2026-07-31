@@ -238,9 +238,9 @@ export default function WargaTable({ selectedWilayah, selectedWarga, isCollapsed
               </thead>
               <tbody>
                 {displayRows.map((w, i) => {
-                  const kelurahan = selectedWilayah ? selectedWilayah.replace("Desa/Kel. ", "") : "Munjuljaya";
+                  const kelurahan = selectedWilayah ? selectedWilayah.replace("Desa/Kel. ", "") : "";
                   return (
-                    <tr key={w.nama} style={{
+                    <tr key={`${w.nama}-${i}`} style={{
                       background: i % 2 === 0
                         ? "var(--map-panel-row-even,#fff)"
                         : "var(--map-panel-row-odd,#f7f9fc)",
