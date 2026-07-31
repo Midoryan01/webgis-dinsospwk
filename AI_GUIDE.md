@@ -64,8 +64,8 @@ RekapGraduasiDesa (id, desaId [unique] -> Desa.id, totalRendah, totalSedang, tot
 | :--- | :--- | :--- | :--- |
 | `/login` | Fixed | `POST /api/auth` | Zod validation, bcrypt verify, timing-safe error delay, httpOnly JWT cookie, auto-redirect jika sudah login |
 | `/admin` | OK | `GET /api/stats` | Protected middleware, rekap statistik & grafik dashboard |
-| `/admin/penerima` | Fixed | `GET, POST /api/warga` | CRUD lengkap, Zod input validation, pagination support, auto rekap graduasi |
-| `/admin/pengguna` | Implemented | `GET, POST /api/users` | Mengambil & menambah daftar user dari DB Prisma dengan RBAC check (hanya administrator) |
+| `/admin/penerima` | Full CRUD | `GET, POST /api/warga`, `PUT, DELETE /api/warga/[id]` | CRUD lengkap (Tambah, Edit, Hapus), Zod input validation, auto-rekap graduasi desa, pagination |
+| `/admin/pengguna` | Full CRUD | `GET, POST /api/users`, `PUT, DELETE /api/users/[id]` | CRUD pengguna lengkap dengan RBAC check (hanya administrator), proteksi self-deletion, password hashing |
 | `/admin/laporan` | Implemented | `GET /api/stats` | Ringkasan laporan agregasi graduasi PKH & tombol Cetak Laporan |
 | `/map` | Optimized | `GET /api/map-data` | Query Prisma digabung (menghilangkan duplikasi `findMany`), GIS Leaflet map publik |
 | `/api/warga/import` | Fixed | `POST /api/warga/import` | Ditambahkan proteksi JWT session & RBAC check (`operator`/`admin`) |

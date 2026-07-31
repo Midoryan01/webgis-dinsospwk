@@ -107,6 +107,94 @@ export default function PenerimaPage() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Edit Warga Modal State
+  const [editingWarga, setEditingWarga] = useState<WargaDb | null>(null);
+  const [editForm, setEditForm] = useState({
+    nama: "", alamat: "", kecamatan: "", desa: "",
+    aud: 0, sd: 0, smp: 0, sma: 0, disabilitas: 0, lansia: 0,
+    kategoriGraduasi: "Sedang"
+  });
+  const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
+
+  // Delete Warga Modal State
+  const [deletingWarga, setDeletingWarga] = useState<WargaDb | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const openEditModal = (w: WargaDb) => {
+    setEditingWarga(w);
+    setEditForm({
+      nama: w.nama,
+      alamat: w.alamat,
+      kecamatan: w.kecamatan,
+      desa: w.desa,
+      aud: w.aud,
+      sd: w.sd,
+      smp: w.smp,
+      sma: w.sma,
+      disabilitas: w.disabilitas,
+      lansia: w.lansia,
+      kategoriGraduasi: w.kategoriGraduasi || "Sedang",
+    });
+    setEditFormErrors({});
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWarga) return;
+    const errs: Record<string, string> = {};
+    if (!editForm.nama.trim()) errs.nama = "Nama lengkap wajib diisi.";
+    if (!editForm.alamat.trim()) errs.alamat = "Alamat lengkap wajib diisi.";
+    if (!editForm.kecamatan) errs.kecamatan = "Kecamatan wajib diisi.";
+    if (!editForm.desa.trim()) errs.desa = "Desa/Kelurahan wajib diisi.";
+    if (Object.keys(errs).length > 0) {
+      setEditFormErrors(errs);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/warga/${editingWarga.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm)
+      });
+      const result = await res.json();
+      if (res.ok) {
+        showToast("success", `Data warga ${editForm.nama} berhasil diperbarui.`);
+        setEditingWarga(null);
+        loadWarga();
+      } else {
+        showToast("error", result.error || "Gagal memperbarui data.");
+      }
+    } catch (err) {
+      showToast("error", "Gagal menghubungi database.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingWarga) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/warga/${deletingWarga.id}`, {
+        method: "DELETE"
+      });
+      const result = await res.json();
+      if (res.ok) {
+        showToast("success", `Data warga ${deletingWarga.nama} berhasil dihapus.`);
+        setDeletingWarga(null);
+        loadWarga();
+      } else {
+        showToast("error", result.error || "Gagal menghapus data.");
+      }
+    } catch (err) {
+      showToast("error", "Gagal menghubungi database.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   // ── Fetch data warga dari database
   const loadWarga = async () => {
     setLoading(true);
@@ -761,19 +849,20 @@ export default function PenerimaPage() {
                   <th onClick={() => handleSort("kategoriGraduasi")} style={{ padding: "12px 16px", textAlign: "center", cursor: "pointer" }} title="Klik untuk mengurutkan Graduasi">
                     Graduasi {sortField === "kategoriGraduasi" ? (sortDirection === "asc" ? "▲" : "▼") : "↕"}
                   </th>
+                  <th style={{ padding: "12px 16px", textAlign: "center" }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={12} style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>
+                    <td colSpan={13} style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>
                       <span className="spinner" style={{ display: "inline-block", width: 24, height: 24, border: "2px solid var(--border)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 0.8s linear infinite", marginRight: 8, verticalAlign: "middle" }} />
                       Sedang memuat data warga dari MySQL...
                     </td>
                   </tr>
                 ) : paginatedWarga.length === 0 ? (
                   <tr>
-                    <td colSpan={12} style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
+                    <td colSpan={13} style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
                       Tidak ada data warga yang cocok dengan filter.
                     </td>
                   </tr>
@@ -803,6 +892,30 @@ export default function PenerimaPage() {
                           }}>
                             {w.kategoriGraduasi}
                           </span>
+                        </td>
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                          <div style={{ display: "flex", justifyContent: "center", gap: 6 }}>
+                            <button
+                              onClick={() => openEditModal(w)}
+                              title="Edit Data Warga"
+                              style={{
+                                background: "rgba(59, 130, 246, 0.12)", color: "#2563eb", border: "none",
+                                borderRadius: 6, padding: "5px 9px", cursor: "pointer", fontSize: 12, fontWeight: 600
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setDeletingWarga(w)}
+                              title="Hapus Data Warga"
+                              style={{
+                                background: "rgba(239, 68, 68, 0.12)", color: "#dc2626", border: "none",
+                                borderRadius: 6, padding: "5px 9px", cursor: "pointer", fontSize: 12, fontWeight: 600
+                              }}
+                            >
+                              Hapus
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1373,7 +1486,145 @@ export default function PenerimaPage() {
         </div>
       )}
 
-      {/* Full-screen loading overlay \u2014 muncul saat import sedang diproses */}
+      {/* ── Edit Warga Modal ─────────────────────────────────────────── */}
+      {editingWarga && (
+        <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
+          <div className="modal" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, width: "100%", maxWidth: 560, overflow: "hidden", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+            <div className="modal-head" style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Edit Data Penerima PKH</h3>
+              <button className="modal-close" onClick={() => setEditingWarga(null)} style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 18 }}>✕</button>
+            </div>
+            <form onSubmit={handleEditSubmit} style={{ overflowY: "auto", flex: 1 }}>
+              <div className="modal-body" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div className="form-field">
+                  <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Nama Lengkap *</label>
+                  <input
+                    type="text"
+                    value={editForm.nama}
+                    onChange={e => setEditForm({ ...editForm, nama: e.target.value })}
+                    style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }}
+                  />
+                  {editFormErrors.nama && <span style={{ color: "var(--error, #ef4444)", fontSize: 11, marginTop: 4, display: "block" }}>{editFormErrors.nama}</span>}
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Alamat Lengkap *</label>
+                  <input
+                    type="text"
+                    value={editForm.alamat}
+                    onChange={e => setEditForm({ ...editForm, alamat: e.target.value })}
+                    style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }}
+                  />
+                  {editFormErrors.alamat && <span style={{ color: "var(--error, #ef4444)", fontSize: 11, marginTop: 4, display: "block" }}>{editFormErrors.alamat}</span>}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div className="form-field">
+                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Kecamatan *</label>
+                    <select
+                      value={editForm.kecamatan}
+                      onChange={e => setEditForm({ ...editForm, kecamatan: e.target.value })}
+                      style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }}
+                    >
+                      <option value="">-- Pilih Kecamatan --</option>
+                      {uniqueKecamatans.map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                    {editFormErrors.kecamatan && <span style={{ color: "var(--error, #ef4444)", fontSize: 11, marginTop: 4, display: "block" }}>{editFormErrors.kecamatan}</span>}
+                  </div>
+
+                  <div className="form-field">
+                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Desa / Kelurahan *</label>
+                    <input
+                      type="text"
+                      value={editForm.desa}
+                      onChange={e => setEditForm({ ...editForm, desa: e.target.value })}
+                      style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }}
+                    />
+                    {editFormErrors.desa && <span style={{ color: "var(--error, #ef4444)", fontSize: 11, marginTop: 4, display: "block" }}>{editFormErrors.desa}</span>}
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                  <div className="form-field">
+                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>AUD</label>
+                    <input type="number" min={0} value={editForm.aud} onChange={e => setEditForm({ ...editForm, aud: parseInt(e.target.value) || 0 })} style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }} />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>SD</label>
+                    <input type="number" min={0} value={editForm.sd} onChange={e => setEditForm({ ...editForm, sd: parseInt(e.target.value) || 0 })} style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }} />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>SMP</label>
+                    <input type="number" min={0} value={editForm.smp} onChange={e => setEditForm({ ...editForm, smp: parseInt(e.target.value) || 0 })} style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }} />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>SMA</label>
+                    <input type="number" min={0} value={editForm.sma} onChange={e => setEditForm({ ...editForm, sma: parseInt(e.target.value) || 0 })} style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }} />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Disabilitas</label>
+                    <input type="number" min={0} value={editForm.disabilitas} onChange={e => setEditForm({ ...editForm, disabilitas: parseInt(e.target.value) || 0 })} style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }} />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Lansia</label>
+                    <input type="number" min={0} value={editForm.lansia} onChange={e => setEditForm({ ...editForm, lansia: parseInt(e.target.value) || 0 })} style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }} />
+                  </div>
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label" style={{ fontSize: 12, fontWeight: 600, display: "block", marginBottom: 6 }}>Kategori Graduasi</label>
+                  <select
+                    value={editForm.kategoriGraduasi}
+                    onChange={e => setEditForm({ ...editForm, kategoriGraduasi: e.target.value })}
+                    style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface-2)", color: "var(--text)", fontSize: 13 }}
+                  >
+                    <option value="Rendah">Rendah</option>
+                    <option value="Sedang">Sedang</option>
+                    <option value="Tinggi">Tinggi</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-foot" style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "16px 24px", borderTop: "1px solid var(--border)" }}>
+                <button type="button" className="btn-ghost" onClick={() => setEditingWarga(null)} style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Batal</button>
+                <button type="submit" className="btn-primary" style={{ background: "var(--primary, #1A6EA8)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Warga Confirmation Modal ───────────────────────────────── */}
+      {deletingWarga && (
+        <div className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: 16 }}>
+          <div className="modal" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, width: "100%", maxWidth: 440, padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--error, #ef4444)" }}>Konfirmasi Hapus Warga</h3>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
+              Apakah Anda yakin ingin menghapus data warga <strong>{deletingWarga.nama}</strong> ({deletingWarga.alamat}, Desa {deletingWarga.desa})?
+              Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => setDeletingWarga(null)}
+                disabled={deleteLoading}
+                style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading}
+                style={{ background: "var(--error, #ef4444)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+              >
+                {deleteLoading ? "Menghapus..." : "Ya, Hapus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full-screen loading overlay — muncul saat import sedang diproses */}
       {pushStatus === "loading" && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 9990,
