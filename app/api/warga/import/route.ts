@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
     }));
 
     console.log("[IMPORT_DEBUG] Mulai query Kecamatan/Desa...");
-    const namaKecamatanUnik = [...new Set(rows.map((r) => r.kecamatan))];
-    const namaDesaUnik = [...new Set(rows.map((r) => r.desa))];
+    const namaKecamatanUnik = [...new Set(rows.map((r) => r.kecamatan).filter(Boolean))];
+    const namaDesaUnik = [...new Set(rows.map((r) => r.desa).filter(Boolean))];
 
     const [kecamatanAda, desaAda] = await Promise.all([
       prisma.kecamatan.findMany({ where: { nama: { in: namaKecamatanUnik } } }),
@@ -52,34 +52,65 @@ export async function POST(req: NextRequest) {
     ]);
     console.log(`[IMPORT_DEBUG] Ditemukan ${kecamatanAda.length} kecamatan, ${desaAda.length} desa existing.`);
 
+    // Map berbasis lower-case key untuk pencocokan case-insensitive dengan DB
     const kecamatanMap = new Map<string, number>(
-      kecamatanAda.map((k: { id: number; nama: string }) => [k.nama, k.id])
+      kecamatanAda.map((k: { id: number; nama: string }) => [k.nama.toLowerCase().trim(), k.id])
     );
     const desaMap = new Map<string, typeof desaAda[number]>(
-      desaAda.map((d: typeof desaAda[number]) => [d.nama, d])
+      desaAda.map((d: typeof desaAda[number]) => [d.nama.toLowerCase().trim(), d])
     );
 
     console.log("[IMPORT_DEBUG] Membuat kecamatan baru (jika ada)...");
-    const kecamatanBaru = namaKecamatanUnik.filter((n) => !kecamatanMap.has(n));
-    for (const nama of kecamatanBaru) {
-      const created = await prisma.kecamatan.create({ data: { nama, penduduk: 0 } });
-      kecamatanMap.set(nama, created.id);
+    const kecamatanBaruMap = new Map<string, string>(); // lowerKey -> originalName
+    for (const r of rows) {
+      if (r.kecamatan) {
+        const lower = r.kecamatan.toLowerCase();
+        if (!kecamatanMap.has(lower) && !kecamatanBaruMap.has(lower)) {
+          kecamatanBaruMap.set(lower, r.kecamatan);
+        }
+      }
     }
-    console.log(`[IMPORT_DEBUG] ${kecamatanBaru.length} kecamatan baru dibuat.`);
+
+    if (kecamatanBaruMap.size > 0) {
+      for (const [lowerKey, originalName] of kecamatanBaruMap.entries()) {
+        const created = await prisma.kecamatan.create({ data: { nama: originalName, penduduk: 0 } });
+        kecamatanMap.set(lowerKey, created.id);
+      }
+      console.log(`[IMPORT_DEBUG] ${kecamatanBaruMap.size} kecamatan baru dibuat.`);
+    }
 
     console.log("[IMPORT_DEBUG] Membuat desa baru (jika ada)...");
-    const desaBaru = namaDesaUnik.filter((n) => !desaMap.has(n));
-    for (const namaDesa of desaBaru) {
-      const row = rows.find((r) => r.desa === namaDesa)!;
-      const created = await prisma.desa.create({
-        data: { nama: namaDesa, penduduk: 0, kecamatanId: kecamatanMap.get(row.kecamatan)! },
-      });
-      desaMap.set(namaDesa, created);
+    const desaBaruMap = new Map<string, { originalName: string; kecamatanName: string }>(); // lowerKey -> info
+    for (const r of rows) {
+      if (r.desa) {
+        const lower = r.desa.toLowerCase();
+        if (!desaMap.has(lower) && !desaBaruMap.has(lower)) {
+          desaBaruMap.set(lower, { originalName: r.desa, kecamatanName: r.kecamatan });
+        }
+      }
     }
-    console.log(`[IMPORT_DEBUG] ${desaBaru.length} desa baru dibuat.`);
+
+    if (desaBaruMap.size > 0) {
+      for (const [lowerKey, { originalName, kecamatanName }] of desaBaruMap.entries()) {
+        const kecId = kecamatanMap.get(kecamatanName.toLowerCase());
+        if (kecId) {
+          const created = await prisma.desa.create({
+            data: { nama: originalName, penduduk: 0, kecamatanId: kecId },
+          });
+          desaMap.set(lowerKey, created);
+        }
+      }
+      console.log(`[IMPORT_DEBUG] ${desaBaruMap.size} desa baru dibuat.`);
+    }
 
     console.log("[IMPORT_DEBUG] Query warga existing...");
-    const desaIdTerlibat = [...new Set(rows.map((r) => desaMap.get(r.desa)?.id).filter((id): id is number => id !== undefined))];
+    const desaIdTerlibat = [
+      ...new Set(
+        rows
+          .map((r) => desaMap.get(r.desa.toLowerCase())?.id)
+          .filter((id): id is number => id !== undefined)
+      ),
+    ];
     const wargaAda = await prisma.warga.findMany({
       where: { desaId: { in: desaIdTerlibat } },
       select: { id: true, nama: true, desaId: true },
@@ -87,7 +118,10 @@ export async function POST(req: NextRequest) {
     console.log(`[IMPORT_DEBUG] Ditemukan ${wargaAda.length} warga existing di desa terkait.`);
 
     const wargaMap = new Map<string, number>(
-      wargaAda.map((w: { id: number; nama: string; desaId: number }) => [`${w.desaId}::${w.nama}`, w.id])
+      wargaAda.map((w: { id: number; nama: string; desaId: number }) => [
+        `${w.desaId}::${w.nama.toLowerCase().trim()}`,
+        w.id,
+      ])
     );
 
     const toCreate: Prisma.WargaCreateManyInput[] = [];
@@ -95,11 +129,11 @@ export async function POST(req: NextRequest) {
     const affectedDesaIds = new Set<number>();
 
     for (const row of rows) {
-      const desa = desaMap.get(row.desa);
+      const desa = desaMap.get(row.desa.toLowerCase());
       if (!desa) continue;
       const desaId = desa.id;
       affectedDesaIds.add(desaId);
-      const key = `${desaId}::${row.nama}`;
+      const key = `${desaId}::${row.nama.toLowerCase()}`;
       const existingId = wargaMap.get(key);
       const data = {
         alamat: row.alamat,
@@ -136,7 +170,12 @@ export async function POST(req: NextRequest) {
     await Promise.all([...affectedDesaIds].map((id) => hitungDanSimpanRekapDesa(id)));
     console.log("[IMPORT_DEBUG] Rekap selesai. DONE.");
 
-    return NextResponse.json({ success: true, count: rows.length, created: toCreate.length, updated: toUpdate.length });
+    return NextResponse.json({
+      success: true,
+      count: rows.length,
+      created: toCreate.length,
+      updated: toUpdate.length,
+    });
   } catch (err: any) {
     console.error("[IMPORT_DEBUG] ERROR:", err);
     return NextResponse.json({ error: `${err.message || err}` }, { status: 500 });
