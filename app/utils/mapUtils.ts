@@ -3,18 +3,18 @@
  * Utility functions untuk visualisasi peta choropleth.
  */
 
-import type { PKHRecord, MetricType } from "@/app/types";
+import type { MetricType } from "@/app/types";
 
 /**
- * Hitung nilai metrik untuk sebuah record PKH.
+ * Hitung nilai metrik untuk sebuah record.
  * - "jumlah": mengembalikan jumlah penerima absolut
- * - "per1000": mengembalikan rasio penerima per 1000 penduduk
+ * - "graduasi": mengembalikan skor dominan (0, 50, 100)
  */
-export function valueFor(record: PKHRecord | undefined, metric: MetricType): number {
+export function valueFor(record: any | undefined, metric: MetricType): number {
   if (!record) return 0;
   if (metric === "jumlah") return record.jumlah;
-  if (record.penduduk === 0) return 0;
-  return (record.jumlah / record.penduduk) * 1000;
+  if (metric === "graduasi") return record.skorDominan ?? 0;
+  return 0;
 }
 
 /**
@@ -54,7 +54,13 @@ export const STROKE_DESA = "#334155" as const; // slate-700 — desa, lebih tipi
  * Dapatkan warna choropleth untuk nilai tertentu berdasarkan breaks.
  * Mengembalikan abu-abu neutral jika value = 0 (tidak ada data).
  */
-export function getColorFor(value: number, breaks: number[]): string {
+export function getColorFor(value: number, breaks: number[], metric?: MetricType): string {
+  if (metric === "graduasi") {
+    if (value === 0) return "#22c55e";   // Hijau (Rendah)
+    if (value === 50) return "#eab308";  // Kuning (Sedang)
+    if (value === 100) return "#ef4444"; // Merah (Tinggi)
+    return "#d4dde8"; // Neutral / No Data
+  }
   if (value === 0 || breaks.length < 2) return "#d4dde8"; // no-data color
   for (let i = 0; i < CHOROPLETH_COLORS.length; i++) {
     if (value <= breaks[i + 1]) return CHOROPLETH_COLORS[i];
@@ -78,8 +84,64 @@ export function createLegendHTML(
   metric:  MetricType,
   isDark = false,
 ): string {
-  const unit = metric === "jumlah" ? " jiwa" : "/1k jiwa";
+  if (metric === "graduasi") {
+    const categories = [
+      { name: "Rendah (Skor: 0)", color: "#22c55e" },
+      { name: "Sedang (Skor: 50)", color: "#eab308" },
+      { name: "Tinggi (Skor: 100)", color: "#ef4444" },
+    ];
 
+    const labels = categories.map(cat => `
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+        <span style="
+          width:14px;height:14px;
+          background:${cat.color};
+          border:1px solid rgba(0,0,0,0.18);
+          border-radius:3px;
+          flex-shrink:0;
+          display:inline-block;
+        "></span>
+        <span style="font-size:11px;color:${isDark ? "rgba(220,232,240,0.85)" : "#2c3e52"}">
+          ${cat.name}
+        </span>
+      </div>`).join("");
+
+    return `
+      <div style="
+        background:${isDark ? "rgba(15,30,47,0.97)" : "rgba(255,255,255,0.97)"};
+        border:1px solid ${isDark ? "rgba(30,51,73,1)" : "#d4dde8"};
+        border-radius:10px;
+        padding:12px 14px;
+        box-shadow:${isDark ? "0 4px 20px rgba(0,0,0,0.55)" : "0 2px 12px rgba(0,0,0,0.10)"};
+        font-family:'Inter','Segoe UI',system-ui,sans-serif;
+        min-width:170px;
+      ">
+        <p style="
+          font-size:10px;font-weight:700;
+          color:${isDark ? "rgba(140,175,200,0.9)" : "#5e7289"};
+          margin:0 0 9px;
+          text-transform:uppercase;
+          letter-spacing:0.08em;
+        ">
+          Potensi Graduasi Dominan
+        </p>
+        ${labels}
+        <div style="
+          margin-top:8px;
+          padding-top:7px;
+          border-top:1px solid ${isDark ? "rgba(30,51,73,0.8)" : "#e2e9f0"};
+          display:flex;
+          align-items:center;
+          gap:5px;
+        ">
+          <span style="font-size:10px;color:${isDark ? "rgba(112,144,170,0.8)" : "#95aabf"}">
+            Kategori Terbanyak
+          </span>
+        </div>
+      </div>`;
+  }
+
+  const unit = " jiwa";
   const labels = CHOROPLETH_COLORS.map((color, i) => {
     const from = Math.round((breaks[i]     ?? 0) * 10) / 10;
     const to   = Math.round((breaks[i + 1] ?? 0) * 10) / 10;
@@ -94,7 +156,7 @@ export function createLegendHTML(
           display:inline-block;
         "></span>
         <span style="font-size:11px;color:${isDark ? "rgba(220,232,240,0.85)" : "#2c3e52"}">
-          ${from}  ${to}${unit}
+          ${from} - ${to}${unit}
         </span>
       </div>`;
   }).join("");
@@ -116,7 +178,7 @@ export function createLegendHTML(
         text-transform:uppercase;
         letter-spacing:0.08em;
       ">
-        ${metric === "jumlah" ? "Jumlah PKH" : "Rasio PKH/1000"}
+        Jumlah PKH
       </p>
       ${labels}
       <div style="

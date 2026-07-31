@@ -1,21 +1,23 @@
-/**
- * middleware.ts
- * Proteksi route /admin dengan verifikasi JWT yang sesungguhnya.
- *
- * PERBAIKAN: Sebelumnya hanya cek keberadaan cookie (bisa dipalsukan).
- * Sekarang memverifikasi JWT signature menggunakan jose (Edge Runtime compatible).
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const token = req.cookies.get("sig_session")?.value;
+
+  // Jika sudah terautentikasi dan mencoba mengakses /login -> redirect ke /admin
+  if (pathname === "/login") {
+    if (token) {
+      const payload = await verifyToken(token);
+      if (payload) {
+        return NextResponse.redirect(new URL("/admin", req.url));
+      }
+    }
+    return NextResponse.next();
+  }
 
   // Lindungi semua route /admin
   if (pathname.startsWith("/admin")) {
-    const token = req.cookies.get("sig_session")?.value;
-
     // Tidak ada cookie → redirect ke login
     if (!token) {
       const loginUrl = new URL("/login", req.url);
@@ -42,5 +44,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/login"],
 };

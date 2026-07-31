@@ -5,29 +5,6 @@ import Link from "next/link";
 import "./dashboard.css";
 import type { KecamatanRow, DashboardStats, RecentActivity, FormState, FormErrors, Toast } from "@/app/types";
 
-// ─── Data dummy (typed) ───────────────────────────────────────────────────────
-const DUMMY_STATS: DashboardStats = {
-  totalPenerima:  24318,
-  totalDesa:      183,
-  totalKecamatan: 17,
-  bulanIni:       312,
-};
-
-const DUMMY_KECAMATAN: KecamatanRow[] = [
-  { nama: "Purwakarta",    jumlah: 8500, penduduk: 130000, persen: 78 },
-  { nama: "Campaka",       jumlah: 4200, penduduk: 55000,  persen: 61 },
-  { nama: "Bungursari",    jumlah: 3100, penduduk: 48000,  persen: 54 },
-  { nama: "Babakancikao",  jumlah: 2800, penduduk: 42000,  persen: 48 },
-  { nama: "Pasawahan",     jumlah: 2100, penduduk: 37000,  persen: 41 },
-  { nama: "Plered",        jumlah: 1950, penduduk: 30000,  persen: 37 },
-];
-
-const DUMMY_RECENT: RecentActivity[] = [
-  { nama: "Siti Aminah",    nik: "321401...002", desa: "Nagri Kidul",   tgl: "05 Apr 2026" },
-  { nama: "Budi Santoso",   nik: "321401...001", desa: "Nagri Kidul",   tgl: "04 Apr 2026" },
-  { nama: "Jajang Nurjaman",nik: "321402...001", desa: "Campaka",       tgl: "03 Apr 2026" },
-  { nama: "Dewi Rahayu",    nik: "321403...009", desa: "Sindangkasih",  tgl: "02 Apr 2026" },
-];
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color, icon }: {
@@ -82,6 +59,69 @@ export default function AdminDashboard() {
   const [toasts,          setToasts]          = useState<Toast[]>([]);
   const [toastCounter,    setToastCounter]    = useState(0);
 
+  // ── Dynamic MySQL States
+  const [stats, setStats] = useState<DashboardStats>({
+    totalPenerima: 0,
+    totalDesa: 0,
+    totalKecamatan: 0,
+    bulanIni: 0,
+  });
+  const [kecamatanList, setKecamatanList] = useState<KecamatanRow[]>([]);
+  const [recentWarga, setRecentWarga] = useState<RecentActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ── Load live statistics and records
+  const loadDashboardData = async () => {
+    try {
+      const statsRes = await fetch("/api/stats");
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+      }
+
+      const mapRes = await fetch("/api/map-data");
+      if (mapRes.ok) {
+        const mapData = await mapRes.json();
+        if (mapData.kecamatanStats) {
+          const rows: KecamatanRow[] = Object.entries(mapData.kecamatanStats).map(([name, val]: [string, any]) => {
+            const percent = val.penduduk > 0 ? Math.round((val.jumlah / val.penduduk) * 100) : 0;
+            return {
+              nama: name,
+              jumlah: val.jumlah,
+              penduduk: val.penduduk,
+              persen: percent
+            };
+          });
+          setKecamatanList(rows);
+        }
+
+        if (mapData.masyarakat) {
+          const allWarga: RecentActivity[] = [];
+          Object.entries(mapData.masyarakat).forEach(([desaName, list]: [string, any]) => {
+            list.forEach((w: any) => {
+              allWarga.push({
+                nama: w.nama,
+                desa: desaName,
+                tgl: "Baru Diimport"
+              });
+            });
+          });
+          if (allWarga.length > 0) {
+            setRecentWarga(allWarga.slice(0, 5));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memuat data dashboard:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
   // ── Sort state ──────────────────────────────────────────────────────────
   const [sortField, setSortField] = useState<keyof KecamatanRow | null>(null);
   const [sortAsc,   setSortAsc]   = useState(true);
@@ -92,7 +132,7 @@ export default function AdminDashboard() {
   };
 
   // ── Form state ──────────────────────────────────────────────────────────
-  const [form,           setForm]           = useState<FormState>({ nik: "", nama: "", kecamatan: "", desa: "", alamat: "" });
+  const [form,           setForm]           = useState<FormState>({ nama: "", kecamatan: "", desa: "", alamat: "" });
   const [formErrors,     setFormErrors]     = useState<FormErrors>({});
   const [formSubmitting, setFormSubmitting] = useState(false);
 
@@ -103,7 +143,8 @@ export default function AdminDashboard() {
 
   // ── Filtered + sorted data ──────────────────────────────────────────────
   const filtered = useMemo(() => {
-    let rows = DUMMY_KECAMATAN.filter(k =>
+    let rows = kecamatanList.filter(k =>
+
       k.nama.toLowerCase().includes(search.toLowerCase())
     );
     if (sortField) {
@@ -146,9 +187,7 @@ export default function AdminDashboard() {
   // ── Form helpers ─────────────────────────────────────────────────────────
   function validateForm(): FormErrors {
     const errors: FormErrors = {};
-    const trimmed = form.nik.trim();
-    if (!trimmed) errors.nik = "NIK wajib diisi.";
-    else if (!/^\d{16}$/.test(trimmed)) errors.nik = "NIK harus 16 digit angka.";
+    
     if (!form.nama.trim())      errors.nama      = "Nama lengkap wajib diisi.";
     if (!form.kecamatan)        errors.kecamatan = "Kecamatan wajib dipilih.";
     if (!form.desa.trim())      errors.desa      = "Desa/kelurahan wajib diisi.";
@@ -157,7 +196,7 @@ export default function AdminDashboard() {
   }
 
   function resetForm() {
-    setForm({ nik: "", nama: "", kecamatan: "", desa: "", alamat: "" });
+    setForm({ nama: "", kecamatan: "", desa: "", alamat: "" });
     setFormErrors({});
     setFormSubmitting(false);
   }
@@ -183,7 +222,7 @@ export default function AdminDashboard() {
   // ── Export CSV ───────────────────────────────────────────────────────────
   const handleExportCsv = () => {
     const header = "No,Kecamatan,Jumlah Penerima,Total Penduduk,Cakupan (%)";
-    const rows   = DUMMY_KECAMATAN.map((r, i) => `${i+1},"${r.nama}",${r.jumlah},${r.penduduk},${r.persen}`);
+    const rows   = kecamatanList.map((r, i) => `${i+1},"${r.nama}",${r.jumlah},${r.penduduk},${r.persen}`);
     const csv    = [header, ...rows].join("\n");
     const blob   = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url    = URL.createObjectURL(blob);
@@ -242,16 +281,16 @@ export default function AdminDashboard() {
     <div className="dash-root">
       {/* Stats */}
       <div className="stats-grid">
-        <StatCard label="Total Penerima PKH" value={DUMMY_STATS.totalPenerima.toLocaleString("id-ID")} sub="Aktif terdaftar" color="#1A6EA8"
+        <StatCard label="Total Penerima PKH" value={stats.totalPenerima.toLocaleString("id-ID")} sub="Aktif terdaftar" color="#1A6EA8"
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
         />
-        <StatCard label="Desa/Kelurahan" value={DUMMY_STATS.totalDesa.toString()} sub="Wilayah terjangkau" color="#15803d"
+        <StatCard label="Desa/Kelurahan" value={stats.totalDesa.toString()} sub="Wilayah terjangkau" color="#15803d"
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>}
         />
-        <StatCard label="Kecamatan" value={DUMMY_STATS.totalKecamatan.toString()} sub="Seluruh kecamatan" color="#7c3aed"
+        <StatCard label="Kecamatan" value={stats.totalKecamatan.toString()} sub="Seluruh kecamatan" color="#7c3aed"
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>}
         />
-        <StatCard label="Tambah Bulan Ini" value={`+${DUMMY_STATS.bulanIni}`} sub="April 2026" color="#d97706"
+        <StatCard label="Tambah Bulan Ini" value={`+${stats.bulanIni || 0}`} sub="Aktif terdaftar" color="#d97706"
           icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
         />
       </div>
@@ -340,7 +379,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="table-foot">
-            <span className="foot-info">Menampilkan {filtered.length} dari {DUMMY_KECAMATAN.length} kecamatan</span>
+            <span className="foot-info">Menampilkan {filtered.length} dari {kecamatanList.length} kecamatan</span>
             <div className="foot-actions">
               <button className="btn-export" onClick={handleExportCsv}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -359,14 +398,14 @@ export default function AdminDashboard() {
               <span className="badge-new">Terbaru</span>
             </div>
             <ul className="activity-list">
-              {DUMMY_RECENT.map((r, i) => (
+              {recentWarga.map((r, i) => (
                 <li key={i} className="activity-item">
                   <div className="act-avatar">{r.nama.charAt(0)}</div>
                   <div className="act-info">
                     <span className="act-name">{r.nama}</span>
                     <span className="act-meta">{r.desa} · {r.tgl}</span>
                   </div>
-                  <span className="act-nik">{r.nik}</span>
+                  
                 </li>
               ))}
             </ul>
@@ -458,15 +497,6 @@ export default function AdminDashboard() {
               <div className="modal-body">
                 <div className="form-grid">
                   <div className="form-field">
-                    <label className="form-label" htmlFor="f-nik">NIK</label>
-                    <input id="f-nik" className={`form-input ${formErrors.nik ? "input-error" : ""}`}
-                      type="text" placeholder="16 digit NIK" maxLength={16}
-                      value={form.nik} onChange={e => updateForm("nik", e.target.value.replace(/\D/g, ""))}
-                      inputMode="numeric" aria-describedby={formErrors.nik ? "nik-error" : undefined} aria-invalid={!!formErrors.nik}
-                    />
-                    {formErrors.nik && <span id="nik-error" className="form-error-text" role="alert">{formErrors.nik}</span>}
-                  </div>
-                  <div className="form-field">
                     <label className="form-label" htmlFor="f-nama">Nama Lengkap</label>
                     <input id="f-nama" className={`form-input ${formErrors.nama ? "input-error" : ""}`}
                       type="text" placeholder="Nama sesuai KTP"
@@ -480,7 +510,7 @@ export default function AdminDashboard() {
                       value={form.kecamatan} onChange={e => updateForm("kecamatan", e.target.value)} aria-invalid={!!formErrors.kecamatan}
                     >
                       <option value="">-- Pilih Kecamatan --</option>
-                      {DUMMY_KECAMATAN.map(k => <option key={k.nama} value={k.nama}>{k.nama}</option>)}
+                      {kecamatanList.map((k: KecamatanRow) => <option key={k.nama} value={k.nama}>{k.nama}</option>)}
                     </select>
                     {formErrors.kecamatan && <span className="form-error-text" role="alert">{formErrors.kecamatan}</span>}
                   </div>

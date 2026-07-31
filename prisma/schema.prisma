@@ -17,19 +17,48 @@ model Kecamatan {
 }
 
 model Desa {
-  id          Int        @id @default(autoincrement())
-  nama        String     @unique // Contoh: "Nagri Kidul"
-  penduduk    Int        // Total penduduk desa
-  kecamatanId Int
-  kecamatan   Kecamatan  @relation(fields: [kecamatanId], references: [id])
-  warga       Warga[]    // Relasi ke tabel Warga
+  id            Int                @id @default(autoincrement())
+  nama          String             @unique // Contoh: "Nagri Kidul"
+  penduduk      Int                // Total penduduk desa
+  kecamatanId   Int
+  kecamatan     Kecamatan          @relation(fields: [kecamatanId], references: [id])
+  warga         Warga[]            // Relasi ke tabel Warga
+  rekapGraduasi RekapGraduasiDesa? // Relasi 1-1 ke RekapGraduasiDesa
 }
 
 model Warga {
+  id               Int      @id @default(autoincrement())
+  nama             String   // Contoh: "Budi Santoso"
+  alamat           String   // Contoh: "Jl. Mawar No. 10"
+  aud              Int      @default(0)
+  sd               Int      @default(0)
+  smp              Int      @default(0)
+  sma              Int      @default(0)
+  disabilitas      Int      @default(0)
+  lansia           Int      @default(0)
+  kategoriGraduasi String   @default("Sedang") // "Sedang", "Rendah", "Tinggi"
+  desaId           Int
+  desa             Desa     @relation(fields: [desaId], references: [id])
+}
+
+model RekapGraduasiDesa {
+  id              Int      @id @default(autoincrement())
+  desaId          Int      @unique
+  desa            Desa     @relation(fields: [desaId], references: [id])
+  totalRendah     Int      @default(0)
+  totalSedang     Int      @default(0)
+  totalTinggi     Int      @default(0)
+  kategoriDominan String   @default("Sedang") // "Rendah", "Sedang", "Tinggi"
+  skorDominan     Int      @default(50)
+  updatedAt       DateTime @updatedAt
+}
+
+model User {
   id        Int      @id @default(autoincrement())
-  nik       String   @unique // Contoh: "321401..."
-  nama      String   // Contoh: "Budi Santoso"
-  alamat    String   // Contoh: "Jl. Mawar No. 10"
-  desaId    Int
-  desa      Desa     @relation(fields: [desaId], references: [id])
+  nip       String   @unique
+  nama      String
+  password  String   // Bcrypt hash
+  role      String   @default("operator") // "administrator" | "operator"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -80,15 +80,55 @@ export default function IndicatorControl({ metric, setMetric, isDark, onToggleTh
       background: P.bg(isDark), border: P.border(isDark),
       borderRadius: 12, boxShadow: P.shadow(isDark), backdropFilter: "blur(12px)",
       fontFamily: "'Inter','Segoe UI',system-ui,sans-serif",
-      
+      minWidth: 160,
     }}>
       {/* Header */}
       <div style={{
-        borderBottom: `1px solid ${P.divider(isDark)}`,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "8px 10px", borderBottom: `1px solid ${P.divider(isDark)}`,
+        gap: 16
       }}>
-        <ControlBtn isDark={isDark} onClick={onToggleTheme} title={isDark ? "Mode Terang" : "Mode Gelap"}>
-          {isDark ? <SunIcon /> : <MoonIcon />}
-        </ControlBtn>
+        <span style={{ fontSize: 11, fontWeight: 700, color: P.text(isDark), letterSpacing: "0.05em", textTransform: "uppercase" }}>Indikator</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <ControlBtn isDark={isDark} onClick={onToggleTheme} title={isDark ? "Mode Terang" : "Mode Gelap"}>
+            {isDark ? <SunIcon /> : <MoonIcon />}
+          </ControlBtn>
+          <ControlBtn isDark={isDark} onClick={() => setIsOpen(false)} title="Minimize">
+            <MinusIcon />
+          </ControlBtn>
+        </div>
+      </div>
+
+      {/* Body / Options */}
+      <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
+        <button
+          onClick={() => setMetric("jumlah")}
+          style={{
+            display: "flex", alignItems: "center",
+            width: "100%", padding: "7px 9px", borderRadius: 6,
+            background: metric === "jumlah" ? P.activeRow(isDark) : "transparent",
+            border: metric === "jumlah" ? P.activeBrd(isDark) : "1px solid transparent",
+            color: metric === "jumlah" ? P.activeText(isDark) : P.textDim(isDark),
+            cursor: "pointer", fontSize: 11.5, fontWeight: 500,
+            textAlign: "left", transition: "all 0.15s",
+          }}
+        >
+          Jumlah Penerima
+        </button>
+        <button
+          onClick={() => setMetric("graduasi")}
+          style={{
+            display: "flex", alignItems: "center",
+            width: "100%", padding: "7px 9px", borderRadius: 6,
+            background: metric === "graduasi" ? P.activeRow(isDark) : "transparent",
+            border: metric === "graduasi" ? P.activeBrd(isDark) : "1px solid transparent",
+            color: metric === "graduasi" ? P.activeText(isDark) : P.textDim(isDark),
+            cursor: "pointer", fontSize: 11.5, fontWeight: 500,
+            textAlign: "left", transition: "all 0.15s",
+          }}
+        >
+          Potensi Graduasi
+        </button>
       </div>
     </div>
   );

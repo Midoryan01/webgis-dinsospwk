@@ -37,7 +37,7 @@ export default function MapWrapper() {
   const { mapHeightPct, onDragStart } = useDragResize(containerRef);
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [metric, setMetric]                   = useState<MetricType>("per1000");
+  const [metric, setMetric]                   = useState<MetricType>("graduasi");
   const [selectedWarga, setSelectedWarga]     = useState<Warga[]>([]);
   const [selectedWilayah, setSelectedWilayah] = useState<string | null>(null);
   const [loadState, setLoadState]             = useState<"idle"|"loading"|"success"|"error">("idle");
