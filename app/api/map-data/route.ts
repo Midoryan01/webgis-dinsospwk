@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 
 // Helper function to calculate the dominant graduation category with tie-breaker: Tinggi > Sedang > Rendah
 function getDominantCategory(rendah: number, sedang: number, tinggi: number) {
+  if (rendah === 0 && sedang === 0 && tinggi === 0) {
+    return { nama: "Tidak Ada Data", jumlah: 0, skor: -1 };
+  }
   const categories = [
     { nama: "Rendah", jumlah: rendah, skor: 0 },
     { nama: "Sedang", jumlah: sedang, skor: 50 },
@@ -81,7 +84,6 @@ export async function GET() {
 
         desaStats[d.nama] = {
           jumlah: d.warga.length,
-          penduduk: d.penduduk,
           kategoriDominan: desaDominant.nama,
           skorDominan: desaDominant.skor,
         };
@@ -93,7 +95,6 @@ export async function GET() {
 
       kecamatanStats[kec.nama] = {
         jumlah: kecJumlah,
-        penduduk: kec.penduduk,
         kategoriDominan: kecDominant.nama,
         skorDominan: kecDominant.skor,
       };

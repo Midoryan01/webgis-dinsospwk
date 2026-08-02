@@ -50,12 +50,10 @@ async function main() {
   // 3. Insert Kecamatan
   console.log("🏛️  Membuat data Kecamatan...");
   const kecMap = new Map<string, number>();
-  for (const [kecName, value] of Object.entries(dummyKecamatan)) {
-    const pkhVal = value as PKHRecord;
+  for (const [kecName] of Object.entries(dummyKecamatan)) {
     const kec = await prisma.kecamatan.create({
       data: {
         nama: kecName,
-        penduduk: pkhVal.penduduk,
       },
     });
     kecMap.set(kecName, kec.id);
@@ -67,18 +65,15 @@ async function main() {
   const desaMapping = [
     { nama: "Munjuljaya", kecamatan: "Purwakarta" },
     { nama: "Nagri Kidul", kecamatan: "Purwakarta" },
-    { nama: "Campaka", kecamatan: "Campaka" },
   ];
 
   const desaMap = new Map<string, number>();
   for (const item of desaMapping) {
     const kecId = kecMap.get(item.kecamatan);
     if (!kecId) continue;
-    const info = dummyDesa[item.nama];
     const desaObj = await prisma.desa.create({
       data: {
         nama: item.nama,
-        penduduk: info ? info.penduduk : 5000,
         kecamatanId: kecId,
       },
     });

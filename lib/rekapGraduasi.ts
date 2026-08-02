@@ -21,7 +21,7 @@ const PRIORITAS_TIE_BREAK: KategoriGraduasi[] = ["Rendah", "Sedang", "Tinggi"];
 
 interface HasilRekap {
   desaId: number;
-  kategoriDominan: KategoriGraduasi;
+  kategoriDominan: KategoriGraduasi | "Tidak Ada Data";
   skorDominan: number;
   totalRendah: number;
   totalSedang: number;
@@ -48,11 +48,12 @@ export async function hitungRekapDesa(desaId: number): Promise<HasilRekap> {
   }
 
   const kategoriDominan = tentukanKategoriDominan(jumlah);
+  const skorDominan = kategoriDominan === "Tidak Ada Data" ? -1 : SKOR_KATEGORI[kategoriDominan];
 
   return {
     desaId,
     kategoriDominan,
-    skorDominan: SKOR_KATEGORI[kategoriDominan],
+    skorDominan,
     totalRendah: jumlah.Rendah,
     totalSedang: jumlah.Sedang,
     totalTinggi: jumlah.Tinggi,
@@ -61,7 +62,11 @@ export async function hitungRekapDesa(desaId: number): Promise<HasilRekap> {
 
 function tentukanKategoriDominan(
   jumlah: Record<KategoriGraduasi, number>
-): KategoriGraduasi {
+): KategoriGraduasi | "Tidak Ada Data" {
+  if (jumlah.Rendah === 0 && jumlah.Sedang === 0 && jumlah.Tinggi === 0) {
+    return "Tidak Ada Data";
+  }
+
   let terpilih: KategoriGraduasi = "Rendah";
 
   for (const kategori of PRIORITAS_TIE_BREAK) {

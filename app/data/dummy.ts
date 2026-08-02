@@ -1,14 +1,14 @@
 import { PKHRecord, Warga } from "../types";
 
 export const dummyKecamatan: Record<string, PKHRecord> = {
-  "Purwakarta": { jumlah: 8500, penduduk: 130000 },
-  "Campaka": { jumlah: 4200, penduduk: 55000 },
+  "Purwakarta": { jumlah: 8500 },
+  "Campaka": { jumlah: 4200 },
 };
 
 export const dummyDesa: Record<string, PKHRecord> = {
-  "Munjuljaya": { jumlah: 11, penduduk: 15000 },
-  "Nagri Kidul": { jumlah: 650, penduduk: 11500 },
-  "Campaka": { jumlah: 350, penduduk: 4500 }
+  "Munjuljaya": { jumlah: 11 },
+  "Nagri Kidul": { jumlah: 650 },
+  "Campaka": { jumlah: 350 }
 };
 
 export const dummyMasyarakat: Record<string, Warga[]> = {

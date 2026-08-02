@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import "./dashboard.css";
 import type { KecamatanRow, DashboardStats, RecentActivity, FormState, FormErrors, Toast } from "@/app/types";
+import Pagination from "@/app/components/Pagination";
 
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
@@ -84,12 +85,9 @@ export default function AdminDashboard() {
         const mapData = await mapRes.json();
         if (mapData.kecamatanStats) {
           const rows: KecamatanRow[] = Object.entries(mapData.kecamatanStats).map(([name, val]: [string, any]) => {
-            const percent = val.penduduk > 0 ? Math.round((val.jumlah / val.penduduk) * 100) : 0;
             return {
               nama: name,
               jumlah: val.jumlah,
-              penduduk: val.penduduk,
-              persen: percent
             };
           });
           setKecamatanList(rows);
@@ -141,10 +139,13 @@ export default function AdminDashboard() {
   const [importDragging,   setImportDragging]   = useState(false);
   const [importProcessing, setImportProcessing] = useState(false);
 
+  // ── Pagination state ────────────────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // ── Filtered + sorted data ──────────────────────────────────────────────
   const filtered = useMemo(() => {
     let rows = kecamatanList.filter(k =>
-
       k.nama.toLowerCase().includes(search.toLowerCase())
     );
     if (sortField) {
@@ -158,6 +159,19 @@ export default function AdminDashboard() {
     }
     return rows;
   }, [search, sortField, sortAsc]);
+
+  // Reset page when filter/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortField, sortAsc]);
+
+  const paginatedKecamatan = useMemo(() => {
+    if (pageSize === -1) return filtered;
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  const totalPages = pageSize === -1 ? 1 : Math.ceil(filtered.length / pageSize);
 
   // ── Toast helpers ────────────────────────────────────────────────────────
   const addToast = useCallback((type: Toast["type"], message: string) => {
@@ -221,8 +235,8 @@ export default function AdminDashboard() {
 
   // ── Export CSV ───────────────────────────────────────────────────────────
   const handleExportCsv = () => {
-    const header = "No,Kecamatan,Jumlah Penerima,Total Penduduk,Cakupan (%)";
-    const rows   = kecamatanList.map((r, i) => `${i+1},"${r.nama}",${r.jumlah},${r.penduduk},${r.persen}`);
+    const header = "No,Kecamatan,Jumlah Penerima";
+    const rows   = kecamatanList.map((r, i) => `${i+1},"${r.nama}",${r.jumlah}`);
     const csv    = [header, ...rows].join("\n");
     const blob   = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url    = URL.createObjectURL(blob);
@@ -336,51 +350,53 @@ export default function AdminDashboard() {
                   <th>No</th>
                   <ThSort field="nama"     label="Kecamatan"       className="td-nama" />
                   <ThSort field="jumlah"   label="Jml Penerima"    className="td-jumlah" />
-                  <ThSort field="penduduk" label="Total Penduduk"   className="td-penduduk" />
-                  <ThSort field="persen"   label="Cakupan" />
                   <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: "center", padding: "32px", color: "var(--text-faint)" }}>
+                    <td colSpan={4} style={{ textAlign: "center", padding: "32px", color: "var(--text-faint)" }}>
                       Tidak ada data yang cocok dengan pencarian.
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((row, i) => (
-                    <tr key={row.nama}>
-                      <td className="td-no">{i + 1}</td>
-                      <td className="td-nama">{row.nama}</td>
-                      <td className="td-jumlah">{row.jumlah.toLocaleString("id-ID")}</td>
-                      <td className="td-penduduk">{row.penduduk.toLocaleString("id-ID")}</td>
-                      <td>
-                        <div className="progress-wrap">
-                          <div className="progress-bar"><div className="progress-fill" style={{ width: `${row.persen}%` }} /></div>
-                          <span className="progress-pct">{row.persen}%</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="row-actions">
-                          <button className="act-btn act-view" title={`Detail ${row.nama}`} aria-label={`Detail ${row.nama}`} onClick={() => setShowDetailModal(row)}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                          </button>
-                          <button className="act-btn act-edit" title={`Edit ${row.nama}`} aria-label={`Edit ${row.nama}`} onClick={() => addToast("info", "Fitur edit akan tersedia setelah database dikonfigurasi.")}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  paginatedKecamatan.map((row, i) => {
+                    const globalIdx = pageSize === -1 ? i + 1 : (currentPage - 1) * pageSize + i + 1;
+                    return (
+                      <tr key={`${row.nama}-${i}`}>
+                        <td className="td-no">{globalIdx}</td>
+                        <td className="td-nama">{row.nama}</td>
+                        <td className="td-jumlah">{row.jumlah.toLocaleString("id-ID")}</td>
+                        <td>
+                          <div className="row-actions">
+                            <button className="act-btn act-view" title={`Detail ${row.nama}`} aria-label={`Detail ${row.nama}`} onClick={() => setShowDetailModal(row)}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <button className="act-btn act-edit" title={`Edit ${row.nama}`} aria-label={`Edit ${row.nama}`} onClick={() => addToast("info", "Fitur edit akan tersedia setelah database dikonfigurasi.")}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
 
-          <div className="table-foot">
-            <span className="foot-info">Menampilkan {filtered.length} dari {kecamatanList.length} kecamatan</span>
-            <div className="foot-actions">
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              itemLabel="kecamatan"
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 16px 12px", borderTop: "1px solid var(--border-2)" }}>
               <button className="btn-export" onClick={handleExportCsv}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Export .csv
@@ -557,9 +573,6 @@ export default function AdminDashboard() {
             <div className="modal-body">
               <div className="detail-row"><span className="detail-label">Kecamatan</span><span className="detail-value">{showDetailModal.nama}</span></div>
               <div className="detail-row"><span className="detail-label">Jumlah Penerima PKH</span><span className="detail-value" style={{ color: "var(--primary-text)" }}>{showDetailModal.jumlah.toLocaleString("id-ID")} jiwa</span></div>
-              <div className="detail-row"><span className="detail-label">Total Penduduk</span><span className="detail-value">{showDetailModal.penduduk.toLocaleString("id-ID")} jiwa</span></div>
-              <div className="detail-row"><span className="detail-label">Cakupan PKH</span><span className="detail-value">{showDetailModal.persen}%</span></div>
-              <div className="detail-row"><span className="detail-label">Non-Penerima</span><span className="detail-value">{(showDetailModal.penduduk - showDetailModal.jumlah).toLocaleString("id-ID")} jiwa</span></div>
             </div>
             <div className="modal-foot">
               <button className="btn-ghost" onClick={() => setShowDetailModal(null)}>Tutup</button>

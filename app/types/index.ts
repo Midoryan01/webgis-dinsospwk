@@ -18,7 +18,6 @@
 /** Record statistik PKH per wilayah */
 export type PKHRecord = {
   jumlah:   number; // total penerima PKH
-  penduduk: number; // total penduduk wilayah
 };
 
 /** Metrik yang ditampilkan di peta choropleth */
@@ -71,8 +70,6 @@ export interface DashboardStats {
 export interface KecamatanRow {
   nama:     string;
   jumlah:   number; // jumlah penerima PKH
-  penduduk: number; // total penduduk
-  persen:   number; // cakupan dalam persen (0-100)
 }
 
 /**

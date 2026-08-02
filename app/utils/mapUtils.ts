@@ -11,10 +11,10 @@ import type { MetricType } from "@/app/types";
  * - "graduasi": mengembalikan skor dominan (0, 50, 100)
  */
 export function valueFor(record: any | undefined, metric: MetricType): number {
-  if (!record) return 0;
+  if (!record || record.jumlah === 0) return -1;
   if (metric === "jumlah") return record.jumlah;
-  if (metric === "graduasi") return record.skorDominan ?? 0;
-  return 0;
+  if (metric === "graduasi") return record.skorDominan ?? -1;
+  return -1;
 }
 
 /**
@@ -52,9 +52,10 @@ export const STROKE_DESA = "#334155" as const; // slate-700 — desa, lebih tipi
 
 /**
  * Dapatkan warna choropleth untuk nilai tertentu berdasarkan breaks.
- * Mengembalikan abu-abu neutral jika value = 0 (tidak ada data).
+ * Mengembalikan abu-abu neutral jika value < 0 (tidak ada data).
  */
 export function getColorFor(value: number, breaks: number[], metric?: MetricType): string {
+  if (value < 0 || value === undefined) return "#d4dde8"; // Abu-abu neutral (Tidak Ada Data)
   if (metric === "graduasi") {
     if (value === 0) return "#22c55e";   // Hijau (Rendah)
     if (value === 50) return "#eab308";  // Kuning (Sedang)
