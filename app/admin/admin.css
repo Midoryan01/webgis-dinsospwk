@@ -265,3 +265,94 @@ html[data-theme="dark"] .admin-topbar {
   transition: background 0.25s ease;
 }
 @media (max-width: 768px) { .admin-content { padding: 16px; } }
+
+/* ─── Admin Tabs Navigation (Pertebal & Tegas) ────────────────────────────── */
+.admin-tabs-nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.admin-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  line-height: 1.3;
+}
+
+/* Tab Tidak Aktif — Surface solid putih, border tebal 2px tegas, kontras tajam */
+.admin-tab-btn.inactive {
+  background: var(--surface, #ffffff);
+  color: var(--text, #0d1f33);
+  border: 2px solid #cbd5e1;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+html[data-theme="dark"] .admin-tab-btn.inactive {
+  background: var(--surface, #0f1e2f);
+  color: var(--text, #dde8f0);
+  border-color: #2c4a68;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.admin-tab-btn.inactive:hover {
+  background: var(--primary-light, #e8f3fb);
+  color: var(--primary, #1A6EA8);
+  border-color: var(--primary, #1A6EA8);
+  box-shadow: 0 3px 8px rgba(26, 110, 168, 0.18);
+  transform: translateY(-1px);
+}
+
+html[data-theme="dark"] .admin-tab-btn.inactive:hover {
+  background: rgba(63, 168, 216, 0.12);
+  color: var(--primary, #3fa8d8);
+  border-color: var(--primary, #3fa8d8);
+}
+
+.admin-tab-btn.inactive:active {
+  transform: translateY(0);
+}
+
+/* Tab Aktif — Warna primer tegas, tebal, shadow elevasi */
+.admin-tab-btn.active {
+  background: var(--primary, #1A6EA8);
+  color: #ffffff;
+  border: 2px solid var(--primary, #1A6EA8);
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(26, 110, 168, 0.35);
+}
+
+.admin-tab-btn.active:hover {
+  background: var(--primary-hover, #135a8c);
+  border-color: var(--primary-hover, #135a8c);
+  box-shadow: 0 4px 14px rgba(26, 110, 168, 0.45);
+}
+
+html[data-theme="dark"] .admin-tab-btn.active {
+  background: var(--primary, #3fa8d8);
+  color: #0a1520;
+  border-color: var(--primary, #3fa8d8);
+}
+
+.admin-tab-btn svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.admin-tab-btn:hover svg {
+  transform: scale(1.08);
+}
+

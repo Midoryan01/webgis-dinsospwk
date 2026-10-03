@@ -222,66 +222,336 @@ export default function WargaTable({ selectedWilayah, selectedWarga, isCollapsed
           <div style={{ flex: 1, minHeight: 0, overflowX: "auto", overflowY: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5,color:"var(--map-panel-text,#0d1f33)" }}>
               <thead>
-                <tr style={{ background: "var(--map-panel-row-odd,#f7f9fc)", position: "sticky", top: 0, zIndex: 1 }}>
-                  <th style={{ ...thS, cursor: "default", width: 38, color: "var(--map-panel-text,#0d1f33)" }}>No</th>
-                  <ThSort field="nama"   label="PENGURUS" style={{ color: "var(--map-panel-text,#0d1f33)", minWidth: 150 }} />
-                  <ThSort field="alamat" label="Alamat" style={{ color: "var(--map-panel-text,#0d1f33)", minWidth: 180 }} />
-                  <ThSort field="aud"    label="AUD" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 50 }} />
-                  <ThSort field="sd"     label="SD" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 50 }} />
-                  <ThSort field="smp"    label="SMP" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 50 }} />
-                  <ThSort field="sma"    label="SMA" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 50 }} />
-                  <ThSort field="disabilitas" label="DISABILITAS" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 90 }} />
-                  <ThSort field="lansia" label="LANSIA" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", width: 70 }} />
-                  <th style={{ ...thS, cursor: "default", color: "var(--map-panel-text,#0d1f33)", minWidth: 120 }}>KELURAHAN</th>
-                  <ThSort field="kategoriGraduasi" label="Kategori GRADUASI" style={{ color: "var(--map-panel-text,#0d1f33)", textAlign: "center", minWidth: 130 }} />
-                </tr>
+                <tr
+  style={{
+    background: "var(--map-panel-row-odd,#f7f9fc)",
+    position: "sticky",
+    top: 0,
+    zIndex: 1,
+  }}
+>
+  <th
+    style={{
+      ...thS,
+      cursor: "default",
+      width: 38,
+      color: "var(--map-panel-text,#0d1f33)",
+    }}
+  >
+    No
+  </th>
+
+  <ThSort
+    field="nama"
+    label="PENGURUS"
+    style={{
+      color: "var(--map-panel-text,#0d1f33)",
+      minWidth: 150,
+    }}
+  />
+
+  <ThSort
+    field="alamat"
+    label="Alamat"
+    style={{
+      color: "var(--map-panel-text,#0d1f33)",
+      minWidth: 180,
+    }}
+  />
+
+  {/* RENDAH */}
+  <ThSort
+    field="aud"
+    label="AUD"
+    style={{
+      color: "#15803d",
+      background: "#dcfce7",
+      textAlign: "center",
+      width: 50,
+      fontWeight: 700,
+    }}
+  />
+
+  <ThSort
+    field="sd"
+    label="SD"
+    style={{
+      color: "#15803d",
+      background: "#dcfce7",
+      textAlign: "center",
+      width: 50,
+      fontWeight: 700,
+    }}
+  />
+
+  {/* SEDANG */}
+  <ThSort
+    field="smp"
+    label="SMP"
+    style={{
+      color: "#a16207",
+      background: "#fef9c3",
+      textAlign: "center",
+      width: 50,
+      fontWeight: 700,
+    }}
+  />
+
+  {/* TINGGI */}
+  <ThSort
+    field="sma"
+    label="SMA"
+    style={{
+      color: "#dc2626",
+      background: "#fee2e2",
+      textAlign: "center",
+      width: 50,
+      fontWeight: 700,
+    }}
+  />
+
+  {/* SEDANG */}
+  <ThSort
+    field="disabilitas"
+    label="DISABILITAS"
+    style={{
+      color: "#a16207",
+      background: "#fef9c3",
+      textAlign: "center",
+      width: 90,
+      fontWeight: 700,
+    }}
+  />
+
+  {/* TINGGI */}
+  <ThSort
+    field="lansia"
+    label="LANSIA"
+    style={{
+      color: "#dc2626",
+      background: "#fee2e2",
+      textAlign: "center",
+      width: 70,
+      fontWeight: 700,
+    }}
+  />
+
+  <th
+    style={{
+      ...thS,
+      cursor: "default",
+      color: "var(--map-panel-text,#0d1f33)",
+      minWidth: 120,
+    }}
+  >
+    KELURAHAN
+  </th>
+
+  <ThSort
+    field="kategoriGraduasi"
+    label="Kategori GRADUASI"
+    style={{
+      color: "var(--map-panel-text,#0d1f33)",
+      textAlign: "center",
+      minWidth: 130,
+    }}
+  />
+</tr>
               </thead>
               <tbody>
-                {displayRows.map((w, i) => {
-                  const kelurahan = selectedWilayah ? selectedWilayah.replace("Desa/Kel. ", "") : "";
-                  return (
-                    <tr key={`${w.nama}-${i}`} style={{
-                      background: i % 2 === 0
-                        ? "var(--map-panel-row-even,#fff)"
-                        : "var(--map-panel-row-odd,#f7f9fc)",
-                    }}>
-                      <td style={{ ...tdS, color: "var(--map-panel-text,#0d1f33)", width: 38, fontVariantNumeric: "tabular-nums" }}>{i + 1}</td>
-                      <td style={{ ...tdS }}>
-                        <div style={{ fontWeight: 600, color: "var(--map-panel-text,#0d1f33)" }}>{w.nama}</div>
-                      </td>
-                      <td style={{ ...tdS, color: "var(--map-panel-text,#0d1f33)" }}>{w.alamat}</td>
-                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.aud > 0 ? 700 : 400, color: w.aud > 0 ? "#ef4444" : "var(--map-panel-text,#0d1f33)" }}>{w.aud}</td>
-                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.sd > 0 ? 700 : 400, color: w.sd > 0 ? "#ef4444" : "var(--map-panel-text,#0d1f33)" }}>{w.sd}</td>
-                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.smp > 0 ? 700 : 400, color: w.smp > 0 ? "#d97706" : "var(--map-panel-text,#0d1f33)" }}>{w.smp}</td>
-                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.sma > 0 ? 700 : 400, color: w.sma > 0 ? "#22c55e" : "var(--map-panel-text,#0d1f33)" }}>{w.sma}</td>
-                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.disabilitas > 0 ? 700 : 400, color: w.disabilitas > 0 ? "#d97706" : "var(--map-panel-text,#0d1f33)" }}>{w.disabilitas}</td>
-                      <td style={{ ...tdS, textAlign: "center", fontWeight: w.lansia > 0 ? 700 : 400, color: w.lansia > 0 ? "#d97706" : "var(--map-panel-text,#0d1f33)" }}>{w.lansia}</td>
-                      <td style={{ ...tdS, fontWeight: 500, color: "var(--map-panel-text,#0d1f33)" }}>{kelurahan.toUpperCase()}</td>
-                      <td style={{ ...tdS, textAlign: "center" }}>
-                        <span style={{
-                          display: "inline-block",
-                          padding: "3px 8px",
-                          borderRadius: 6,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          backgroundColor: w.kategoriGraduasi === "Tinggi"
-                            ? "rgba(34, 197, 94, 0.15)"
-                            : w.kategoriGraduasi === "Sedang"
-                            ? "rgba(234, 179, 8, 0.15)"
-                            : "rgba(239, 68, 68, 0.15)",
-                          color: w.kategoriGraduasi === "Tinggi"
-                            ? "#16a34a"
-                            : w.kategoriGraduasi === "Sedang"
-                            ? "#d97706"
-                            : "#ef4444",
-                        }}>
-                          {w.kategoriGraduasi}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
+  {displayRows.map((w, i) => {
+    const kelurahan = selectedWilayah
+      ? selectedWilayah.replace("Desa/Kel. ", "")
+      : "";
+
+    return (
+      <tr
+        key={`${w.nama}-${i}`}
+        style={{
+          background:
+            i % 2 === 0
+              ? "var(--map-panel-row-even,#fff)"
+              : "var(--map-panel-row-odd,#f7f9fc)",
+        }}
+      >
+        {/* NO */}
+        <td
+          style={{
+            ...tdS,
+            color: "var(--map-panel-text,#0d1f33)",
+            width: 38,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {i + 1}
+        </td>
+
+        {/* PENGURUS */}
+        <td style={{ ...tdS }}>
+          <div
+            style={{
+              fontWeight: 600,
+              color: "var(--map-panel-text,#0d1f33)",
+            }}
+          >
+            {w.nama}
+          </div>
+        </td>
+
+        {/* ALAMAT */}
+        <td
+          style={{
+            ...tdS,
+            color: "var(--map-panel-text,#0d1f33)",
+          }}
+        >
+          {w.alamat}
+        </td>
+
+        {/* AUD - RENDAH */}
+        <td
+          style={{
+            ...tdS,
+            textAlign: "center",
+            fontWeight: w.aud > 0 ? 700 : 400,
+            color:
+              w.aud > 0
+                ? "#16a34a"
+                : "var(--map-panel-text,#0d1f33)",
+          }}
+        >
+          {w.aud}
+        </td>
+
+        {/* SD - RENDAH */}
+        <td
+          style={{
+            ...tdS,
+            textAlign: "center",
+            fontWeight: w.sd > 0 ? 700 : 400,
+            color:
+              w.sd > 0
+                ? "#16a34a"
+                : "var(--map-panel-text,#0d1f33)",
+          }}
+        >
+          {w.sd}
+        </td>
+
+        {/* SMP - SEDANG */}
+        <td
+          style={{
+            ...tdS,
+            textAlign: "center",
+            fontWeight: w.smp > 0 ? 700 : 400,
+            color:
+              w.smp > 0
+                ? "#d97706"
+                : "var(--map-panel-text,#0d1f33)",
+          }}
+        >
+          {w.smp}
+        </td>
+
+        {/* SMA - TINGGI */}
+        <td
+          style={{
+            ...tdS,
+            textAlign: "center",
+            fontWeight: w.sma > 0 ? 700 : 400,
+            color:
+              w.sma > 0
+                ? "#dc2626"
+                : "var(--map-panel-text,#0d1f33)",
+          }}
+        >
+          {w.sma}
+        </td>
+
+        {/* DISABILITAS - SEDANG */}
+        <td
+          style={{
+            ...tdS,
+            textAlign: "center",
+            fontWeight: w.disabilitas > 0 ? 700 : 400,
+            color:
+              w.disabilitas > 0
+                ? "#d97706"
+                : "var(--map-panel-text,#0d1f33)",
+          }}
+        >
+          {w.disabilitas}
+        </td>
+
+        {/* LANSIA - TINGGI */}
+        <td
+          style={{
+            ...tdS,
+            textAlign: "center",
+            fontWeight: w.lansia > 0 ? 700 : 400,
+            color:
+              w.lansia > 0
+                ? "#dc2626"
+                : "var(--map-panel-text,#0d1f33)",
+          }}
+        >
+          {w.lansia}
+        </td>
+
+        {/* KELURAHAN */}
+        <td
+          style={{
+            ...tdS,
+            fontWeight: 500,
+            color: "var(--map-panel-text,#0d1f33)",
+          }}
+        >
+          {kelurahan.toUpperCase()}
+        </td>
+
+        {/* KATEGORI GRADUASI */}
+        <td
+          style={{
+            ...tdS,
+            textAlign: "center",
+          }}
+        >
+          <span
+            style={{
+              display: "inline-block",
+              padding: "3px 8px",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+
+              // BACKGROUND WARNA KATEGORI
+              backgroundColor:
+                w.kategoriGraduasi === "Rendah"
+                  ? "rgba(34, 197, 94, 0.15)"
+                  : w.kategoriGraduasi === "Sedang"
+                  ? "rgba(234, 179, 8, 0.15)"
+                  : w.kategoriGraduasi === "Tinggi"
+                  ? "rgba(239, 68, 68, 0.15)"
+                  : "transparent",
+
+              // WARNA TEKS KATEGORI
+              color:
+                w.kategoriGraduasi === "Rendah"
+                  ? "#16a34a"
+                  : w.kategoriGraduasi === "Sedang"
+                  ? "#d97706"
+                  : w.kategoriGraduasi === "Tinggi"
+                  ? "#dc2626"
+                  : "var(--map-panel-text,#0d1f33)",
+            }}
+          >
+            {w.kategoriGraduasi || "-"}
+          </span>
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
             </table>
           </div>
         )

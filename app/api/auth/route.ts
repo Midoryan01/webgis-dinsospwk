@@ -1,15 +1,3 @@
-/**
- * app/api/auth/route.ts
- * API autentikasi dengan Prisma ORM database lookup, bcrypt password verification, dan JWT session.
- *
- * KEAMANAN:
- * - Mengambil kredensial dari tabel User di database MySQL via Prisma
- * - Password dibandingkan menggunakan bcrypt.compare
- * - Validasi input menggunakan Zod
- * - Session token menggunakan JWT yang ditandatangani via jose
- * - Cookie httpOnly + secure (di production) + sameSite: lax
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";

@@ -113,28 +113,65 @@ export async function POST(req: NextRequest) {
     ];
     const wargaAda = await prisma.warga.findMany({
       where: { desaId: { in: desaIdTerlibat } },
-      select: { id: true, nama: true, desaId: true },
+      select: { id: true, nama: true, alamat: true, desaId: true },
     });
     console.log(`[IMPORT_DEBUG] Ditemukan ${wargaAda.length} warga existing di desa terkait.`);
 
-    const wargaMap = new Map<string, number>(
-      wargaAda.map((w: { id: number; nama: string; desaId: number }) => [
-        `${w.desaId}::${w.nama.toLowerCase().trim()}`,
-        w.id,
-      ])
-    );
+    const cleanStr = (s: string) =>
+      (s || "")
+        .toLowerCase()
+        .replace(/[\.\,\-\/\\]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    // Map berbasis desaId + nama + alamat (mencegah tabrakan nama sama di desa yang sama)
+    const exactWargaMap = new Map<string, number>();
+    // Tracking frekuensi nama per desa
+    const nameCountPerDesa = new Map<string, number>();
+    const singleNameMap = new Map<string, number>();
+
+    for (const w of wargaAda) {
+      const exactKey = `${w.desaId}::${cleanStr(w.nama)}::${cleanStr(w.alamat)}`;
+      exactWargaMap.set(exactKey, w.id);
+
+      const nameKey = `${w.desaId}::${cleanStr(w.nama)}`;
+      nameCountPerDesa.set(nameKey, (nameCountPerDesa.get(nameKey) || 0) + 1);
+      singleNameMap.set(nameKey, w.id);
+    }
 
     const toCreate: Prisma.WargaCreateManyInput[] = [];
     const toUpdate: { id: number; data: any }[] = [];
     const affectedDesaIds = new Set<number>();
+    const usedExistingIds = new Set<number>();
 
     for (const row of rows) {
       const desa = desaMap.get(row.desa.toLowerCase());
       if (!desa) continue;
       const desaId = desa.id;
       affectedDesaIds.add(desaId);
-      const key = `${desaId}::${row.nama.toLowerCase()}`;
-      const existingId = wargaMap.get(key);
+
+      const exactKey = `${desaId}::${cleanStr(row.nama)}::${cleanStr(row.alamat)}`;
+      const nameKey = `${desaId}::${cleanStr(row.nama)}`;
+
+      let existingId: number | undefined = undefined;
+
+      // 1. Cek kecocokan persis: desaId + nama + alamat
+      if (exactWargaMap.has(exactKey)) {
+        const candidateId = exactWargaMap.get(exactKey)!;
+        if (!usedExistingIds.has(candidateId)) {
+          existingId = candidateId;
+        }
+      }
+
+      // 2. Fallback: hanya jika nama tersebut BENAR-BENAR UNIK (hanya ada 1 orang dengan nama itu di desa tersebut)
+      //    Jika ada lebih dari 1 orang dengan nama itu (misal ada dua "NENI"), JANGAN fallback ke nama saja agar tidak tertukar!
+      if (!existingId && (nameCountPerDesa.get(nameKey) === 1)) {
+        const candidateId = singleNameMap.get(nameKey)!;
+        if (!usedExistingIds.has(candidateId)) {
+          existingId = candidateId;
+        }
+      }
+
       const data = {
         alamat: row.alamat,
         aud: row.aud,
@@ -145,7 +182,9 @@ export async function POST(req: NextRequest) {
         lansia: row.lansia,
         kategoriGraduasi: row.kategoriGraduasi,
       };
+
       if (existingId) {
+        usedExistingIds.add(existingId);
         toUpdate.push({ id: existingId, data });
       } else {
         toCreate.push({ nama: row.nama, desaId, ...data });

@@ -60,6 +60,42 @@ interface WargaDb {
 
 type SortField = "id" | "nama" | "alamat" | "kecamatan" | "desa" | "aud" | "sd" | "smp" | "sma" | "disabilitas" | "lansia" | "kategoriGraduasi";
 
+// Warna indikator per kategori graduasi (konsisten di tabel & map)
+const GRAD_COLOR = {
+  Rendah:  { text: "#ef4444", bg: "rgba(239, 68, 68, 0.12)" },   // merah
+  Sedang:  { text: "#d97706", bg: "rgba(234, 179, 8, 0.15)" },    // kuning
+  Tinggi:  { text: "#16a34a", bg: "rgba(34, 197, 94, 0.15)" },    // hijau
+  default: { text: "var(--text-muted, #64748b)", bg: "transparent" },
+} as const;
+
+/** Kembalikan style warna angka kolom sesuai kategori JIKA kolom itu relevan */
+function getNumCellStyle(
+  val: number,
+  colCategoryOrRelevant: string | boolean,
+  kategori?: string
+): React.CSSProperties {
+  if (val === 0) return { textAlign: "center" as const, padding: "12px 16px" };
+  
+  if (typeof colCategoryOrRelevant === "string") {
+    const c = GRAD_COLOR[colCategoryOrRelevant as keyof typeof GRAD_COLOR] ?? GRAD_COLOR.default;
+    return {
+      textAlign: "center" as const,
+      padding: "12px 16px",
+      fontWeight: 700,
+      color: c.text,
+    };
+  }
+
+  if (!colCategoryOrRelevant) return { textAlign: "center" as const, padding: "12px 16px" };
+  const c = GRAD_COLOR[(kategori ?? "") as keyof typeof GRAD_COLOR] ?? GRAD_COLOR.default;
+  return {
+    textAlign: "center" as const,
+    padding: "12px 16px",
+    fontWeight: 700,
+    color: c.text,
+  };
+}
+
 export default function PenerimaPage() {
   const [activeTab, setActiveTab] = useState<"daftar" | "import">("daftar");
   const [wargaList, setWargaList] = useState<WargaDb[]>([]);
@@ -367,9 +403,37 @@ export default function PenerimaPage() {
           return;
         }
 
+        // ── Validasi header wajib
+        const firstRow = rawJson[0] as any;
+        const requiredHeaders = [
+          { key: ["aud", "anakusiadini"], label: "AUD" },
+          { key: ["sd", "sekolahdasar"], label: "SD" },
+          { key: ["smp", "sekolahmenengahpertama"], label: "SMP" },
+          { key: ["sma", "sekolahmenengahatas"], label: "SMA" },
+          { key: ["disabilitas", "cacat"], label: "DISABILITAS" },
+          { key: ["lansia", "tua"], label: "LANSIA" },
+          { key: ["kategorigraduasi", "graduasi", "statusgraduasi", "kategorigraduasi"], label: "Kategori GRADUASI" },
+        ];
+        const normalize = (s: string) => s.toLowerCase().replace(/[\s_\-\.]/g, "");
+        const rowKeys = Object.keys(firstRow).map(normalize);
+        const missing = requiredHeaders.filter(h =>
+          !h.key.some(k => rowKeys.includes(normalize(k)))
+        );
+        if (missing.length > 0) {
+          const missingLabels = missing.map(h => `"${h.label}"`).join(", ");
+          showToast("error", `Kolom tidak ditemukan: ${missingLabels}. Periksa format Excel.`);
+          return;
+        }
+
         // Map dan Validasi tiap baris
         const parsed: ParsedRow[] = rawJson.map((row: any, idx) => {
           const mapped = mapExcelRowToWarga(row);
+
+          // Debug log per baris
+          console.log(`[IMPORT_ROW ${idx + 1}] Nama: ${mapped.nama}`);
+          console.log(`  AUD: ${mapped.aud}, SD: ${mapped.sd}, SMP: ${mapped.smp}, SMA: ${mapped.sma}, DISABILITAS: ${mapped.disabilitas}, LANSIA: ${mapped.lansia}`);
+          console.log(`  Kategori Excel: ${mapped.kategoriGraduasi}`);
+
           const result = wargaSchema.safeParse(mapped);
 
           let status: "VALID" | "INVALID" = "VALID";
@@ -378,6 +442,10 @@ export default function PenerimaPage() {
           if (!result.success) {
             status = "INVALID";
             errors = result.error.issues.map(err => `${err.path.join(".")}: ${err.message}`);
+          }
+
+          if (result.success) {
+            console.log(`  Kategori yang disimpan: ${result.data.kategoriGraduasi}`);
           }
 
           return {
@@ -398,12 +466,13 @@ export default function PenerimaPage() {
     reader.readAsArrayBuffer(file);
   };
 
-  // Mapper kolom Excel case-insensitive & space-insensitive
+  // Mapper kolom Excel berdasarkan NAMA HEADER (case-insensitive & space-insensitive)
   const mapExcelRowToWarga = (row: any) => {
+    const normalize = (s: string) => s.toLowerCase().replace(/[\s_\-\.]/g, "");
     const getVal = (keys: string[], fallback: any = "") => {
       for (const k of Object.keys(row)) {
-        const normKey = k.toLowerCase().replace(/[\s_\-\.]/g, "");
-        if (keys.some(key => key.toLowerCase().replace(/[\s_\-\.]/g, "") === normKey)) {
+        const normKey = normalize(k);
+        if (keys.some(key => normalize(key) === normKey)) {
           return row[k];
         }
       }
@@ -413,16 +482,18 @@ export default function PenerimaPage() {
     const desaVal = String(getVal(["desa", "kelurahan", "village"])).trim();
     let kecVal = String(getVal(["kecamatan", "subdistrict"])).trim();
     if (!kecVal && desaVal) {
-      // Auto-resolve based on desaToKecMap (case-insensitive)
       kecVal = desaToKecMap[desaVal.toLowerCase()] || "";
     }
 
-    let katGrad = String(getVal(["kategorigraduasi", "graduasi", "statusgraduasi"], "Sedang")).trim();
-    // Normalize casing to match Zod Enum: "Rendah", "Sedang", "Tinggi"
-    const lowerKat = katGrad.toLowerCase();
+    // Ambil Kategori GRADUASI langsung dari Excel — JANGAN kalkulasi ulang
+    // Header Excel: "Kategori GRADUASI" → normalize → "kategorigraduasi"
+    const rawKatGrad = String(getVal(["Kategori GRADUASI", "kategoriGraduasi", "graduasi", "statusgraduasi"], "")).trim();
+    const lowerKat = rawKatGrad.toLowerCase();
+    let katGrad: string;
     if (lowerKat === "rendah") katGrad = "Rendah";
+    else if (lowerKat === "sedang") katGrad = "Sedang";
     else if (lowerKat === "tinggi") katGrad = "Tinggi";
-    else katGrad = "Sedang"; // Default to Sedang for others
+    else katGrad = ""; // Biarkan kosong agar Zod validation menangkap
 
     return {
       nama: String(getVal(["nama", "namalengkap", "pengurus", "warga"])).trim(),
@@ -640,31 +711,41 @@ export default function PenerimaPage() {
         </div>
       )}
 
-      {/* Tabs Menu */}
-      <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--border)", paddingBottom: 12, marginBottom: 24 }}>
+      {/* Tabs Menu Navigation */}
+      <div className="admin-tabs-nav" role="tablist" aria-label="Navigasi Menu Penerima">
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "daftar"}
           onClick={() => setActiveTab("daftar")}
-          style={{
-            background: activeTab === "daftar" ? "var(--primary, #1A6EA8)" : "transparent",
-            color: activeTab === "daftar" ? "#fff" : "var(--text-muted)",
-            border: activeTab === "daftar" ? "1px solid var(--primary)" : "1px solid var(--border)",
-            borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, fontSize: 13,
-            transition: "all 0.2s"
-          }}
+          className={`admin-tab-btn ${activeTab === "daftar" ? "active" : "inactive"}`}
+          title="Lihat dan kelola data daftar penerima PKH"
         >
-          Daftar Penerima PKH
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="9" y1="21" x2="9" y2="9" />
+          </svg>
+          <span>Daftar Penerima PKH</span>
         </button>
+
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "import"}
           onClick={() => setActiveTab("import")}
-          style={{
-            background: activeTab === "import" ? "var(--primary, #1A6EA8)" : "transparent",
-            color: activeTab === "import" ? "#fff" : "var(--text-muted)",
-            border: activeTab === "import" ? "1px solid var(--primary)" : "1px solid var(--border)",
-            borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, fontSize: 13,
-            transition: "all 0.2s"
-          }}
+          className={`admin-tab-btn ${activeTab === "import" ? "active" : "inactive"}`}
+          title="Import dan validasi data warga dari file Excel (.xlsx, .xls)"
         >
-          Import File Excel
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+            <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+            <path d="M8 13h2" />
+            <path d="M14 13h2" />
+            <path d="M8 17h2" />
+            <path d="M14 17h2" />
+          </svg>
+          <span>Import File Excel</span>
         </button>
       </div>
 
@@ -869,28 +950,101 @@ export default function PenerimaPage() {
                 ) : (
                   paginatedWarga.map((w, i) => {
                     const globalIdx = pageSize === -1 ? i + 1 : (currentPage - 1) * pageSize + i + 1;
+                    const kat = w.kategoriGraduasi;
                     return (
-                      <tr key={w.id} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "transparent" : "var(--surface-2)" }}>
-                        <td style={{ padding: "12px 16px" }}>{globalIdx}</td>
-                        <td style={{ padding: "12px 16px", fontWeight: 600 }}>{w.nama}</td>
-                        <td style={{ padding: "12px 16px" }}>{w.alamat}</td>
+                      <tr
+                        key={w.id}
+                        style={{
+                          borderBottom: "1px solid var(--border)",
+                          background:
+                            i % 2 === 0 ? "transparent" : "var(--surface-2)",
+                        }}
+                      >
                         <td style={{ padding: "12px 16px" }}>
-                          <div style={{ fontWeight: 600 }}>Desa {w.desa}</div>
-                          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Kec. {w.kecamatan}</div>
+                          {globalIdx}
                         </td>
-                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.aud}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.sd}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.smp}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.sma}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.disabilitas}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "center" }}>{w.lansia}</td>
+
+                        <td style={{ padding: "12px 16px", fontWeight: 600 }}>
+                          {w.nama}
+                        </td>
+
+                        <td style={{ padding: "12px 16px" }}>
+                          {w.alamat}
+                        </td>
+
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ fontWeight: 600 }}>
+                            Desa {w.desa}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--text-muted)",
+                            }}
+                          >
+                            Kec. {w.kecamatan}
+                          </div>
+                        </td>
+
+                        {/* AUD - Rendah */}
+                        <td style={getNumCellStyle(w.aud, "Rendah")}>
+                          {w.aud}
+                        </td>
+
+                        {/* SD - Rendah */}
+                        <td style={getNumCellStyle(w.sd, "Rendah")}>
+                          {w.sd}
+                        </td>
+
+                        {/* SMP - Sedang */}
+                        <td style={getNumCellStyle(w.smp, "Sedang")}>
+                          {w.smp}
+                        </td>
+
+                        {/* SMA - Tinggi */}
+                        <td style={getNumCellStyle(w.sma, "Tinggi")}>
+                          {w.sma}
+                        </td>
+
+                        {/* DISABILITAS - Sedang */}
+                        <td style={getNumCellStyle(w.disabilitas, "Sedang")}>
+                          {w.disabilitas}
+                        </td>
+
+                        {/* LANSIA - Tinggi */}
+                        <td style={getNumCellStyle(w.lansia, "Tinggi")}>
+                          {w.lansia}
+                        </td>
+
+                        {/* Kategori Graduasi */}
                         <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                          <span style={{
-                            padding: "4px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
-                            background: w.kategoriGraduasi === "Tinggi" ? "rgba(34, 197, 94, 0.15)" : w.kategoriGraduasi === "Sedang" ? "rgba(234, 179, 8, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                            color: w.kategoriGraduasi === "Tinggi" ? "#16a34a" : w.kategoriGraduasi === "Sedang" ? "#d97706" : "#ef4444"
-                          }}>
-                            {w.kategoriGraduasi}
+                          <span
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+
+                              background:
+                                kat === "Rendah"
+                                  ? "rgba(34, 197, 94, 0.15)"
+                                  : kat === "Sedang"
+                                  ? "rgba(234, 179, 8, 0.15)"
+                                  : kat === "Tinggi"
+                                  ? "rgba(239, 68, 68, 0.15)"
+                                  : "transparent",
+
+                              color:
+                                kat === "Rendah"
+                                  ? "#16a34a"
+                                  : kat === "Sedang"
+                                  ? "#d97706"
+                                  : kat === "Tinggi"
+                                  ? "#dc2626"
+                                  : "var(--text-muted)",
+                            }}
+                          >
+                            {kat || "-"}
                           </span>
                         </td>
                         <td style={{ padding: "12px 16px", textAlign: "center" }}>
