@@ -64,7 +64,6 @@ async function main() {
   console.log("🏡 Membuat data Desa/Kelurahan...");
   const desaMapping = [
     { nama: "Munjuljaya", kecamatan: "Purwakarta" },
-    { nama: "Nagri Kidul", kecamatan: "Purwakarta" },
   ];
 
   const desaMap = new Map<string, number>();

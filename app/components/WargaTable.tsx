@@ -446,7 +446,7 @@ export default function WargaTable({ selectedWilayah, selectedWarga, isCollapsed
             fontWeight: w.smp > 0 ? 700 : 400,
             color:
               w.smp > 0
-                ? "#d97706"
+                ? "#e6a90d"
                 : "var(--map-panel-text,#0d1f33)",
           }}
         >
@@ -476,7 +476,7 @@ export default function WargaTable({ selectedWilayah, selectedWarga, isCollapsed
             fontWeight: w.disabilitas > 0 ? 700 : 400,
             color:
               w.disabilitas > 0
-                ? "#d97706"
+                ? "#e6a90d"
                 : "var(--map-panel-text,#0d1f33)",
           }}
         >
